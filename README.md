@@ -1,5 +1,9 @@
 # OpenPhotoFrame
 
+<p align="center">
+  <img src="assets/icon.png" alt="OpenPhotoFrame Icon" width="128" height="128">
+</p>
+
 **Turn your old Android tablet into a beautiful digital photo frame.**
 
 OpenPhotoFrame is a free, open-source slideshow app that syncs photos from your private cloud (Nextcloud) or local storage. No ads, no subscriptions, no nag screens – just your photos.
@@ -59,6 +63,13 @@ flutter run -d linux
 # Run on connected Android device
 flutter run -d <device-id>
 ```
+
+### Updating the App Icon
+To update the app icon, replace `assets/icon.png` with your new icon (recommended: 1024x1024 PNG), then run:
+```bash
+dart run flutter_launcher_icons
+```
+This generates icons for all platforms (Android, iOS, Web, Windows, macOS, Linux).
 
 ### Architecture
 The app follows a **Local First** architecture with clean separation of concerns:
