@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../domain/interfaces/config_provider.dart';
@@ -122,6 +123,8 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const SettingsScreen()),
     ).then((_) {
+      // Restore immersive mode after returning from settings
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       // Restart timer when returning from settings
       _startTimer();
     });
