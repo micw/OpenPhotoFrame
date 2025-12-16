@@ -40,4 +40,23 @@ abstract class ConfigProvider extends ChangeNotifier {
   
   String get clockPosition; // 'bottomRight', 'bottomLeft', 'topRight', 'topLeft'
   set clockPosition(String value);
+  
+  // Display schedule settings (day/night mode)
+  bool get scheduleEnabled; // Enable day/night schedule
+  set scheduleEnabled(bool value);
+  
+  int get dayStartHour; // Hour when day mode starts (0-23), default 8
+  set dayStartHour(int value);
+  
+  int get dayStartMinute; // Minute when day mode starts (0-59), default 0
+  set dayStartMinute(int value);
+  
+  int get nightStartHour; // Hour when night mode starts (0-23), default 22
+  set nightStartHour(int value);
+  
+  int get nightStartMinute; // Minute when night mode starts (0-59), default 0
+  set nightStartMinute(int value);
+  
+  bool get useNativeScreenOff; // Use Device Admin lockNow() for true screen off (Android)
+  set useNativeScreenOff(bool value);
 }

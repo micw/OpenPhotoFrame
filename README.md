@@ -68,8 +68,9 @@ flutter run -d <device-id>
 To update the app icon, replace `assets/icon.png` with your new icon (recommended: 1024x1024 PNG), then run:
 ```bash
 dart run flutter_launcher_icons
+cp assets/icon.png fastlane/metadata/android/en-US/images/icon.png
 ```
-This generates icons for all platforms (Android, iOS, Web, Windows, macOS, Linux).
+This generates icons for all platforms (Android, iOS, Web, Windows, macOS, Linux) and updates the F-Droid metadata.
 
 ### Architecture
 The app follows a **Local First** architecture with clean separation of concerns:

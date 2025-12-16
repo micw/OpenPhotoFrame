@@ -175,4 +175,53 @@ class JsonConfigService extends ConfigProvider {
   set clockPosition(String value) {
     _config['clock_position'] = value;
   }
+  
+  // Display schedule settings (day/night mode)
+  @override
+  bool get scheduleEnabled => _config['schedule_enabled'] ?? false;
+  
+  @override
+  set scheduleEnabled(bool value) {
+    _config['schedule_enabled'] = value;
+  }
+  
+  @override
+  int get dayStartHour => _config['day_start_hour'] ?? 8;
+  
+  @override
+  set dayStartHour(int value) {
+    _config['day_start_hour'] = value;
+  }
+  
+  @override
+  int get dayStartMinute => _config['day_start_minute'] ?? 0;
+  
+  @override
+  set dayStartMinute(int value) {
+    _config['day_start_minute'] = value;
+  }
+  
+  @override
+  int get nightStartHour => _config['night_start_hour'] ?? 22;
+  
+  @override
+  set nightStartHour(int value) {
+    _config['night_start_hour'] = value;
+  }
+  
+  @override
+  int get nightStartMinute => _config['night_start_minute'] ?? 0;
+  
+  @override
+  set nightStartMinute(int value) {
+    _config['night_start_minute'] = value;
+  }
+  
+  @override
+  bool get useNativeScreenOff => _config['use_native_screen_off'] ?? false;
+  
+  @override
+  set useNativeScreenOff(bool value) {
+    _config['use_native_screen_off'] = value;
+  }
 }

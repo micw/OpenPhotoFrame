@@ -4,7 +4,9 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 import '../../domain/interfaces/config_provider.dart';
+import '../../domain/interfaces/display_controller.dart';
 import '../../infrastructure/services/photo_service.dart';
+import '../../infrastructure/services/native_display_controller.dart';
 import '../../domain/models/photo_entry.dart';
 import '../widgets/photo_slide.dart';
 import '../widgets/clock_overlay.dart';
@@ -32,6 +34,14 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
   // Screen size for optimized image loading
   Size? _screenSize;
 
+  // Display schedule
+  StreamSubscription? _scheduleSubscription;
+  Timer? _scheduleTimer;
+  bool _scheduleWasEnabled = false; // Track previous state for detecting changes
+  
+  // Display off state for black overlay
+  bool _isDisplayOff = false;
+
   @override
   void initState() {
     super.initState();
@@ -41,7 +51,124 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     // Initialize Service
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initService();
+      // Schedule init is now handled reactively in build() via _updateDisplaySchedule()
     });
+  }
+
+  /// Update display schedule based on config settings.
+  /// Called from build() to react to config changes.
+  void _updateDisplaySchedule(ConfigProvider config) {
+    final scheduleEnabled = config.scheduleEnabled;
+    
+    // Detect state change
+    if (scheduleEnabled != _scheduleWasEnabled) {
+      print('📺 Schedule enabled changed: $_scheduleWasEnabled -> $scheduleEnabled');
+      _scheduleWasEnabled = scheduleEnabled;
+      
+      if (scheduleEnabled) {
+        // Schedule was just enabled - start timer
+        print('📺 Display schedule enabled: Day ${config.dayStartHour}:${config.dayStartMinute.toString().padLeft(2, '0')}, Night ${config.nightStartHour}:${config.nightStartMinute.toString().padLeft(2, '0')}');
+        
+        // Cancel any existing timer
+        _scheduleTimer?.cancel();
+        
+        // Check initial state and apply
+        _applyScheduleState();
+        
+        // Check every minute for schedule changes
+        _scheduleTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+          _applyScheduleState();
+        });
+      } else {
+        // Schedule was just disabled - stop timer and restore display
+        print('📺 Display schedule disabled');
+        _scheduleTimer?.cancel();
+        _scheduleTimer = null;
+        
+        // Restore display to normal if it was off
+        if (_isDisplayOff) {
+          _restoreDisplay();
+        }
+      }
+    }
+  }
+  
+  /// Restore display to normal mode
+  Future<void> _restoreDisplay() async {
+    final displayController = context.read<DisplayController>();
+    final nativeController = displayController is NativeDisplayController 
+        ? displayController 
+        : null;
+    
+    print('📺 Restoring display to normal');
+    if (nativeController != null) {
+      await nativeController.wakeNow();
+    } else {
+      await displayController.setMode(DisplayMode.normal);
+    }
+    if (mounted) setState(() => _isDisplayOff = false);
+  }
+  
+  /// Apply current schedule state (day/night) based on time
+  Future<void> _applyScheduleState() async {
+    final config = context.read<ConfigProvider>();
+    if (!config.scheduleEnabled) return;
+    
+    final now = DateTime.now();
+    final dayStart = DateTime(now.year, now.month, now.day, config.dayStartHour, config.dayStartMinute);
+    final nightStart = DateTime(now.year, now.month, now.day, config.nightStartHour, config.nightStartMinute);
+    
+    // Determine if we're in day or night mode
+    bool isNight;
+    DateTime nextTransition;
+    
+    if (nightStart.isAfter(dayStart)) {
+      // Normal case: day is before night (e.g., 8:00 - 22:00)
+      isNight = now.isBefore(dayStart) || !now.isBefore(nightStart);
+      if (isNight) {
+        // We're in night mode, next transition is day start
+        nextTransition = now.isBefore(dayStart) ? dayStart : dayStart.add(const Duration(days: 1));
+      } else {
+        // We're in day mode, next transition is night start
+        nextTransition = nightStart;
+      }
+    } else {
+      // Inverted case: night starts before day (e.g., 22:00 - 8:00 next day)
+      isNight = !now.isBefore(nightStart) && now.isBefore(dayStart);
+      if (isNight) {
+        nextTransition = dayStart;
+      } else {
+        nextTransition = nightStart;
+      }
+    }
+    
+    final displayController = context.read<DisplayController>();
+    final nativeController = displayController is NativeDisplayController 
+        ? displayController 
+        : null;
+    
+    if (isNight && !_isDisplayOff) {
+      // Switch to night mode (screen off)
+      print('📺 Switching to NIGHT mode (screen off), wake at $nextTransition');
+      
+      if (config.useNativeScreenOff && nativeController != null) {
+        await nativeController.sleepUntil(nextTransition);
+      } else {
+        await displayController.setMode(DisplayMode.off);
+      }
+      if (mounted) setState(() => _isDisplayOff = true);
+      
+    } else if (!isNight && _isDisplayOff) {
+      // Switch to day mode (screen on)
+      print('📺 Switching to DAY mode (screen on)');
+      
+      if (nativeController != null) {
+        await nativeController.wakeNow();
+      } else {
+        await displayController.setMode(DisplayMode.normal);
+      }
+      if (mounted) setState(() => _isDisplayOff = false);
+    }
   }
 
   Future<void> _enableWakelock() async {
@@ -220,6 +347,8 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
   void dispose() {
     _timer?.cancel();
     _photosSubscription?.cancel();
+    _scheduleSubscription?.cancel();
+    _scheduleTimer?.cancel();
     for (var slide in _slides) {
       slide.controller.dispose();
     }
@@ -232,6 +361,9 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     // Cache screen size for optimized image loading
     _screenSize = MediaQuery.of(context).size;
     final config = context.watch<ConfigProvider>();
+    
+    // React to schedule config changes
+    _updateDisplaySchedule(config);
     
     if (_isLoading) {
       return const Scaffold(
@@ -324,6 +456,15 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
               },
             ),
           ),
+          
+          // 4. Black overlay when display is "off" (for LCD displays)
+          // Uses IgnorePointer so touch events pass through to the layer below
+          if (_isDisplayOff)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: Container(color: Colors.black),
+              ),
+            ),
         ],
       ),
     );

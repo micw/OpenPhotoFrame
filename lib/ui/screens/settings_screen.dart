@@ -5,6 +5,7 @@ import '../../domain/interfaces/config_provider.dart';
 import '../../infrastructure/services/photo_service.dart';
 import '../../infrastructure/services/nextcloud_sync_service.dart';
 import '../../infrastructure/services/autostart_service.dart';
+import '../../infrastructure/services/native_screen_control_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -13,7 +14,7 @@ class SettingsScreen extends StatefulWidget {
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObserver {
   late int _slideDurationMinutes;
   late double _transitionDurationSeconds;
   late String _syncType;
@@ -26,6 +27,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late bool _showClock;
   late String _clockSize;
   late String _clockPosition;
+  
+  // Display schedule settings
+  late bool _scheduleEnabled;
+  late TimeOfDay _dayStartTime;
+  late TimeOfDay _nightStartTime;
+  late bool _useNativeScreenOff;
+  bool _deviceAdminEnabled = false;
   
   bool _isSyncing = false;
   String? _syncStatus;
@@ -41,6 +49,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    
     final config = context.read<ConfigProvider>();
     _slideDurationMinutes = (config.slideDurationSeconds / 60).round().clamp(1, 15);
     _transitionDurationSeconds = (config.transitionDurationMs / 1000.0).clamp(0.5, 5.0);
@@ -51,6 +61,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _showClock = config.showClock;
     _clockSize = config.clockSize;
     _clockPosition = config.clockPosition;
+    
+    // Display schedule settings
+    _scheduleEnabled = config.scheduleEnabled;
+    _dayStartTime = TimeOfDay(hour: config.dayStartHour, minute: config.dayStartMinute);
+    _nightStartTime = TimeOfDay(hour: config.nightStartHour, minute: config.nightStartMinute);
+    _useNativeScreenOff = config.useNativeScreenOff;
+    
+    // Check Device Admin status
+    _checkDeviceAdmin();
     
     final nextcloudConfig = config.getSourceConfig('nextcloud_link');
     _nextcloudUrlController = TextEditingController(
@@ -64,8 +83,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
   
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _nextcloudUrlController.dispose();
     super.dispose();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Re-check Device Admin status when app resumes (e.g., after granting permission)
+    if (state == AppLifecycleState.resumed) {
+      _checkDeviceAdmin();
+    }
   }
   
   Future<void> _saveSettings() async {
@@ -88,6 +116,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
     config.showClock = _showClock;
     config.clockSize = _clockSize;
     config.clockPosition = _clockPosition;
+    
+    // Display schedule settings
+    config.scheduleEnabled = _scheduleEnabled;
+    config.dayStartHour = _dayStartTime.hour;
+    config.dayStartMinute = _dayStartTime.minute;
+    config.nightStartHour = _nightStartTime.hour;
+    config.nightStartMinute = _nightStartTime.minute;
+    config.useNativeScreenOff = _useNativeScreenOff;
     
     // Sync autostart setting to SharedPreferences for BootReceiver
     await AutostartService.setEnabled(_autostartOnBoot);
@@ -227,6 +263,26 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 8),
             _buildLastSyncInfo(),
           ],
+          
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+          
+          // === DISPLAY SCHEDULE SETTINGS ===
+          _buildSectionHeader('Display Schedule'),
+          const SizedBox(height: 8),
+          
+          SwitchListTile(
+            title: const Text('Day/Night Schedule'),
+            subtitle: const Text('Turn off display at night'),
+            secondary: const Icon(Icons.nightlight_round),
+            value: _scheduleEnabled,
+            onChanged: (value) {
+              setState(() => _scheduleEnabled = value);
+            },
+          ),
+          
+          if (_scheduleEnabled) ..._buildScheduleSettings(),
           
           const SizedBox(height: 24),
           const Divider(),
@@ -683,5 +739,174 @@ class _SettingsScreenState extends State<SettingsScreen> {
         });
       }
     }
+  }
+  
+  // === Device Admin and Schedule Methods ===
+  
+  Future<void> _checkDeviceAdmin() async {
+    if (!Platform.isAndroid) return;
+    
+    final enabled = await NativeScreenControlService.isDeviceAdminEnabled();
+    if (mounted) {
+      setState(() {
+        _deviceAdminEnabled = enabled;
+        // If Device Admin is not enabled but setting is on, turn it off
+        if (!enabled && _useNativeScreenOff) {
+          _useNativeScreenOff = false;
+        }
+      });
+    }
+  }
+  
+  Future<void> _requestDeviceAdmin() async {
+    await NativeScreenControlService.requestDeviceAdmin();
+    // Check again after a delay (user might grant permission)
+    await Future.delayed(const Duration(seconds: 1));
+    await _checkDeviceAdmin();
+  }
+  
+  List<Widget> _buildScheduleSettings() {
+    return [
+      const SizedBox(height: 8),
+      
+      // Day start time
+      ListTile(
+        leading: const Icon(Icons.wb_sunny),
+        title: const Text('Day starts at'),
+        trailing: TextButton(
+          onPressed: () => _selectTime(isDay: true),
+          child: Text(
+            _formatTimeOfDay(_dayStartTime),
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ),
+      ),
+      
+      // Night start time
+      ListTile(
+        leading: const Icon(Icons.nights_stay),
+        title: const Text('Night starts at'),
+        trailing: TextButton(
+          onPressed: () => _selectTime(isDay: false),
+          child: Text(
+            _formatTimeOfDay(_nightStartTime),
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ),
+      ),
+      
+      const SizedBox(height: 8),
+      
+      // Native screen off (Android only)
+      if (Platform.isAndroid) ...[
+        const Divider(),
+        const SizedBox(height: 8),
+        
+        SwitchListTile(
+          title: const Text('Native Screen Off'),
+          subtitle: Text(
+            _deviceAdminEnabled
+                ? 'Use Device Admin to completely turn off screen'
+                : 'Requires Device Admin permission',
+          ),
+          secondary: const Icon(Icons.screen_lock_portrait),
+          value: _useNativeScreenOff,
+          onChanged: _deviceAdminEnabled
+              ? (value) {
+                  setState(() => _useNativeScreenOff = value);
+                }
+              : null, // Disabled if no Device Admin
+        ),
+        
+        if (!_deviceAdminEnabled) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Device Admin permission is required to fully turn off the screen. '
+                  'Without it, the display will only be dimmed.',
+                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                OutlinedButton.icon(
+                  onPressed: _requestDeviceAdmin,
+                  icon: const Icon(Icons.admin_panel_settings, size: 18),
+                  label: const Text('Grant Device Admin'),
+                ),
+              ],
+            ),
+          ),
+        ],
+        
+        if (_deviceAdminEnabled && _useNativeScreenOff) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.check_circle, size: 16, color: Colors.green),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Device Admin enabled - screen will turn off completely',
+                      style: TextStyle(fontSize: 12, color: Colors.green[700]),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.warning_amber, size: 16, color: Colors.orange),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Important: Screen lock (PIN/Pattern/Password) must be disabled for automatic wake-up to work. '
+                        'Go to Settings → Security → Screen lock → None.',
+                        style: TextStyle(fontSize: 12, color: Colors.orange[700]),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    ];
+  }
+  
+  Future<void> _selectTime({required bool isDay}) async {
+    final initialTime = isDay ? _dayStartTime : _nightStartTime;
+    
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: initialTime,
+      builder: (context, child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: true),
+          child: child!,
+        );
+      },
+    );
+    
+    if (picked != null && mounted) {
+      setState(() {
+        if (isDay) {
+          _dayStartTime = picked;
+        } else {
+          _nightStartTime = picked;
+        }
+      });
+    }
+  }
+  
+  String _formatTimeOfDay(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 }

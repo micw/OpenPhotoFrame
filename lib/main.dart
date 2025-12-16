@@ -9,12 +9,14 @@ import 'domain/interfaces/playlist_strategy.dart';
 import 'domain/interfaces/sync_provider.dart';
 import 'domain/interfaces/storage_provider.dart';
 import 'domain/interfaces/photo_repository.dart';
+import 'domain/interfaces/display_controller.dart';
 import 'infrastructure/services/json_config_service.dart';
 import 'infrastructure/services/file_metadata_provider.dart';
 import 'infrastructure/services/nextcloud_sync_service.dart';
 import 'infrastructure/services/noop_sync_service.dart';
 import 'infrastructure/services/photo_service.dart';
 import 'infrastructure/services/local_storage_provider.dart';
+import 'infrastructure/services/native_display_controller.dart';
 import 'infrastructure/repositories/file_system_photo_repository.dart';
 import 'infrastructure/strategies/weighted_freshness_strategy.dart';
 import 'ui/screens/slideshow_screen.dart';
@@ -57,6 +59,10 @@ class OpenPhotoFrameApp extends StatelessWidget {
         ),
         Provider<PlaylistStrategy>(
           create: (_) => WeightedFreshnessStrategy(),
+        ),
+        Provider<DisplayController>(
+          create: (_) => NativeDisplayController(),
+          dispose: (_, controller) => controller.dispose(),
         ),
         
         // Repository needs Storage and Metadata
