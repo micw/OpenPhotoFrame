@@ -6,6 +6,7 @@ import '../../domain/interfaces/config_provider.dart';
 import '../../infrastructure/services/photo_service.dart';
 import '../../domain/models/photo_entry.dart';
 import '../widgets/photo_slide.dart';
+import '../widgets/clock_overlay.dart';
 import 'settings_screen.dart';
 
 class SlideshowScreen extends StatefulWidget {
@@ -227,6 +228,7 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
   Widget build(BuildContext context) {
     // Cache screen size for optimized image loading
     _screenSize = MediaQuery.of(context).size;
+    final config = context.watch<ConfigProvider>();
     
     if (_isLoading) {
       return const Scaffold(
@@ -277,7 +279,15 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
             );
           }).toList(),
 
-          // 2. Touch Layer (Invisible, on top)
+          // 2. Clock Overlay
+          if (config.showClock)
+            ClockOverlay(
+              key: ValueKey('clock_${config.clockSize}_${config.clockPosition}'),
+              size: config.clockSize,
+              position: config.clockPosition,
+            ),
+
+          // 3. Touch Layer (Invisible, on top)
           Positioned.fill(
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,

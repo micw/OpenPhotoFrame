@@ -1,4 +1,6 @@
-abstract class ConfigProvider {
+import 'package:flutter/foundation.dart';
+
+abstract class ConfigProvider extends ChangeNotifier {
   Future<void> load();
   Future<void> save();
   
@@ -28,4 +30,14 @@ abstract class ConfigProvider {
   // Android specific settings
   bool get autostartOnBoot; // Start app when device boots (Android only)
   set autostartOnBoot(bool value);
+  
+  // Clock display settings
+  bool get showClock; // Show clock overlay
+  set showClock(bool value);
+  
+  String get clockSize; // 'small', 'medium', 'large'
+  set clockSize(String value);
+  
+  String get clockPosition; // 'bottomRight', 'bottomLeft', 'topRight', 'topLeft'
+  set clockPosition(String value);
 }

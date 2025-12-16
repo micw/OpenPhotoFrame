@@ -22,6 +22,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
   late bool _deleteOrphanedFiles;
   late bool _autostartOnBoot;
   
+  // Clock settings
+  late bool _showClock;
+  late String _clockSize;
+  late String _clockPosition;
+  
   bool _isSyncing = false;
   String? _syncStatus;
   
@@ -43,6 +48,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     _syncIntervalMinutes = config.syncIntervalMinutes;
     _deleteOrphanedFiles = config.deleteOrphanedFiles;
     _autostartOnBoot = config.autostartOnBoot;
+    _showClock = config.showClock;
+    _clockSize = config.clockSize;
+    _clockPosition = config.clockPosition;
     
     final nextcloudConfig = config.getSourceConfig('nextcloud_link');
     _nextcloudUrlController = TextEditingController(
@@ -77,6 +85,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     config.syncIntervalMinutes = _syncIntervalMinutes;
     config.deleteOrphanedFiles = _deleteOrphanedFiles;
     config.autostartOnBoot = _autostartOnBoot;
+    config.showClock = _showClock;
+    config.clockSize = _clockSize;
+    config.clockPosition = _clockPosition;
     
     // Sync autostart setting to SharedPreferences for BootReceiver
     await AutostartService.setEnabled(_autostartOnBoot);
@@ -148,6 +159,31 @@ class _SettingsScreenState extends State<SettingsScreen> {
               setState(() => _transitionDurationSeconds = value);
             },
           ),
+          
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+          
+          // === CLOCK SETTINGS ===
+          _buildSectionHeader('Clock'),
+          const SizedBox(height: 8),
+          
+          SwitchListTile(
+            title: const Text('Show Clock'),
+            subtitle: const Text('Display time on slideshow'),
+            secondary: const Icon(Icons.access_time),
+            value: _showClock,
+            onChanged: (value) {
+              setState(() => _showClock = value);
+            },
+          ),
+          
+          if (_showClock) ...[
+            const SizedBox(height: 8),
+            _buildClockSizeSelector(),
+            const SizedBox(height: 8),
+            _buildClockPositionSelector(),
+          ],
           
           const SizedBox(height: 24),
           const Divider(),
@@ -500,6 +536,115 @@ class _SettingsScreenState extends State<SettingsScreen> {
           color: Colors.grey,
         ),
         textAlign: TextAlign.center,
+      ),
+    );
+  }
+  
+  Widget _buildClockSizeSelector() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        children: [
+          const Icon(Icons.format_size, size: 20),
+          const SizedBox(width: 12),
+          const Text('Size'),
+          const Spacer(),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(value: 'small', label: Text('S')),
+              ButtonSegment(value: 'medium', label: Text('M')),
+              ButtonSegment(value: 'large', label: Text('L')),
+            ],
+            selected: {_clockSize},
+            onSelectionChanged: (value) {
+              setState(() => _clockSize = value.first);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildClockPositionSelector() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.grid_view, size: 20),
+              const SizedBox(width: 12),
+              const Text('Position'),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Center(
+            child: Container(
+              width: 160,
+              height: 100,
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Stack(
+                children: [
+                  // Top Left
+                  Positioned(
+                    top: 8,
+                    left: 8,
+                    child: _buildPositionButton('topLeft', '⌜'),
+                  ),
+                  // Top Right
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: _buildPositionButton('topRight', '⌝'),
+                  ),
+                  // Bottom Left
+                  Positioned(
+                    bottom: 8,
+                    left: 8,
+                    child: _buildPositionButton('bottomLeft', '⌞'),
+                  ),
+                  // Bottom Right
+                  Positioned(
+                    bottom: 8,
+                    right: 8,
+                    child: _buildPositionButton('bottomRight', '⌟'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildPositionButton(String position, String label) {
+    final isSelected = _clockPosition == position;
+    return GestureDetector(
+      onTap: () => setState(() => _clockPosition = position),
+      child: Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: isSelected ? Theme.of(context).colorScheme.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(
+            color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey,
+          ),
+        ),
+        child: Center(
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 18,
+              color: isSelected ? Colors.white : Colors.grey,
+            ),
+          ),
+        ),
       ),
     );
   }

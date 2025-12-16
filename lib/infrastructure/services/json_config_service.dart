@@ -5,7 +5,7 @@ import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../domain/interfaces/config_provider.dart';
 
-class JsonConfigService implements ConfigProvider {
+class JsonConfigService extends ConfigProvider {
   final _log = Logger('JsonConfigService');
   Map<String, dynamic> _config = {};
   File? _configFile;
@@ -71,6 +71,7 @@ class JsonConfigService implements ConfigProvider {
       final jsonString = const JsonEncoder.withIndent('  ').convert(_config);
       await _configFile!.writeAsString(jsonString);
       _log.info("Config saved successfully");
+      notifyListeners(); // Notify UI to rebuild with new config values
     } catch (e) {
       _log.severe("Failed to save config", e);
     }
@@ -148,5 +149,30 @@ class JsonConfigService implements ConfigProvider {
   @override
   set autostartOnBoot(bool value) {
     _config['autostart_on_boot'] = value;
+  }
+  
+  // Clock display settings
+  @override
+  bool get showClock => _config['show_clock'] ?? true;
+  
+  @override
+  set showClock(bool value) {
+    _config['show_clock'] = value;
+  }
+  
+  @override
+  String get clockSize => _config['clock_size'] ?? 'large';
+  
+  @override
+  set clockSize(String value) {
+    _config['clock_size'] = value;
+  }
+  
+  @override
+  String get clockPosition => _config['clock_position'] ?? 'bottomRight';
+  
+  @override
+  set clockPosition(String value) {
+    _config['clock_position'] = value;
   }
 }

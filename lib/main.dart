@@ -39,7 +39,7 @@ void main() async {
 }
 
 class OpenPhotoFrameApp extends StatelessWidget {
-  final ConfigProvider configProvider;
+  final JsonConfigService configProvider;
 
   const OpenPhotoFrameApp({super.key, required this.configProvider});
 
@@ -48,7 +48,7 @@ class OpenPhotoFrameApp extends StatelessWidget {
     return MultiProvider(
       providers: [
         // 1. Infrastructure Services (Singletons)
-        Provider<ConfigProvider>.value(value: configProvider),
+        ChangeNotifierProvider<ConfigProvider>.value(value: configProvider),
         Provider<StorageProvider>(
           create: (_) => LocalStorageProvider(),
         ),

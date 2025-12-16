@@ -52,20 +52,6 @@ class PhotoSlide extends StatelessWidget {
             gaplessPlayback: true,
           ),
         ),
-        
-        // 3. Debug Info (Optional)
-        Positioned(
-          bottom: 20,
-          right: 20,
-          child: Text(
-            photo.date.toString().split('.')[0],
-            style: const TextStyle(
-              color: Colors.white54, 
-              fontSize: 12,
-              shadows: [Shadow(blurRadius: 2, color: Colors.black)],
-            ),
-          ),
-        ),
       ],
     );
   }
