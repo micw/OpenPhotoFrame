@@ -297,7 +297,8 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     final photo = forward ? service.nextPhoto() : service.previousPhoto();
     
     if (photo != null) {
-      _transitionTo(photo);
+      // Slide direction: next = slide from right, previous = slide from left
+      _transitionTo(photo, slideDirection: forward ? SlideDirection.right : SlideDirection.left);
     }
     
     // Restart timer after interaction
@@ -317,7 +318,7 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     });
   }
 
-  Future<void> _transitionTo(PhotoEntry photo) async {
+  Future<void> _transitionTo(PhotoEntry photo, {SlideDirection? slideDirection}) async {
     // Increment transaction ID - this invalidates any pending transitions
     final myTransitionId = ++_transitionId;
     
@@ -353,15 +354,21 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     }
 
     // Create controller for new slide
+    // Slide animation is faster (300ms) than fade (configurable)
     final config = context.read<ConfigProvider>();
+    final duration = slideDirection != null
+        ? const Duration(milliseconds: 300)
+        : Duration(milliseconds: config.transitionDurationMs);
+    
     final controller = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: config.transitionDurationMs),
+      duration: duration,
     );
 
     final newItem = _SlideItem(
       photo: photo,
       controller: controller,
+      slideDirection: slideDirection,
     );
 
     setState(() {
@@ -467,14 +474,36 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
         children: [
           // 1. Content Layer (Custom Stack)
           ..._slides.map((slide) {
-            return FadeTransition(
-              opacity: slide.controller,
-              child: PhotoSlide(
-                key: ValueKey(slide.photo.file.path),
-                photo: slide.photo,
-                screenSize: _screenSize!,
-              ),
+            final child = PhotoSlide(
+              key: ValueKey(slide.photo.file.path),
+              photo: slide.photo,
+              screenSize: _screenSize!,
             );
+            
+            // Use slide animation for manual navigation, fade for auto-advance
+            if (slide.slideDirection != null) {
+              // Slide from right (next) or left (previous)
+              final beginOffset = slide.slideDirection == SlideDirection.right
+                  ? const Offset(1.0, 0.0)  // Start from right
+                  : const Offset(-1.0, 0.0); // Start from left
+              
+              return SlideTransition(
+                position: Tween<Offset>(
+                  begin: beginOffset,
+                  end: Offset.zero,
+                ).animate(CurvedAnimation(
+                  parent: slide.controller,
+                  curve: Curves.easeOutCubic,
+                )),
+                child: child,
+              );
+            } else {
+              // Fade transition for auto-advance
+              return FadeTransition(
+                opacity: slide.controller,
+                child: child,
+              );
+            }
           }).toList(),
 
           // 2. Clock Overlay
@@ -537,6 +566,10 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
 class _SlideItem {
   final PhotoEntry photo;
   final AnimationController controller;
+  final SlideDirection? slideDirection; // null = fade, left/right = slide
 
-  _SlideItem({required this.photo, required this.controller});
+  _SlideItem({required this.photo, required this.controller, this.slideDirection});
 }
+
+/// Direction for slide animation
+enum SlideDirection { left, right }
