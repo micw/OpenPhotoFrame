@@ -1,0 +1,4 @@
+Improvements
+
+- Slide animation when swiping photos manually
+- App pauses automatically when in background
