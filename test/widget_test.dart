@@ -5,26 +5,20 @@
 // gestures. You can also use WidgetTester to find child widgets in the widget
 // tree, read text, and verify that the values of widget properties are correct.
 
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:open_photo_frame/main.dart';
+import 'package:open_photo_frame/infrastructure/services/json_config_service.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
+  testWidgets('App initializes without crashing', (WidgetTester tester) async {
+    // Create a mock config service for testing
+    final configService = JsonConfigService();
+    
     // Build our app and trigger a frame.
-    await tester.pumpWidget(const OpenPhotoFrameApp());
-
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    await tester.pumpWidget(OpenPhotoFrameApp(configProvider: configService));
+    
+    // If we get here without throwing, the app initialized successfully
+    expect(find.byType(OpenPhotoFrameApp), findsOneWidget);
   });
 }

@@ -86,19 +86,16 @@ class FileSystemPhotoRepository implements PhotoRepository {
 
       for (var file in files) {
         if (_isImage(file.path) && !file.path.endsWith('.part')) {
-          // Check if we already have this file in memory to preserve 'lastShown' state
-          // Note: This simple check assumes path uniqueness.
-          final existing = _photos.firstWhere(
-            (p) => p.file.path == file.path, 
-            orElse: () => PhotoEntry(
-              file: file, 
-              date: DateTime.now(), // Placeholder
-              sizeBytes: 0
-            )
-          );
+          // Check if we already have this file in memory to preserve runtime state
+          // (lastShown, weight) across rescans
+          final existingIndex = _photos.indexWhere((p) => p.file.path == file.path);
 
-          if (existing.sizeBytes == 0) {
-            // It's new, load metadata
+          if (existingIndex != -1) {
+            // File already exists - preserve the existing PhotoEntry instance
+            // to maintain runtime state (lastShown, weight)
+            newPhotos.add(_photos[existingIndex]);
+          } else {
+            // New file - load metadata and create new entry
             final date = await _metadataProvider.getDate(file);
             final stat = await file.stat();
             newPhotos.add(PhotoEntry(
@@ -106,9 +103,6 @@ class FileSystemPhotoRepository implements PhotoRepository {
               date: date,
               sizeBytes: stat.size,
             ));
-          } else {
-            // Keep existing state
-            newPhotos.add(existing);
           }
         }
       }
