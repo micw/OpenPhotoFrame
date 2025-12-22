@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -71,6 +72,14 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
         _pauseSlideshow();
         break;
       case AppLifecycleState.resumed:
+        // Always re-check schedule when app comes to foreground
+        // This is critical for wake-ups where activity might already be running
+        final config = context.read<ConfigProvider>();
+        if (config.scheduleEnabled) {
+          _applyScheduleState();
+        }
+        
+        // Resume slideshow if it was paused
         _resumeSlideshow();
         break;
       case AppLifecycleState.detached:
@@ -105,8 +114,10 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
       _startTimer();
     }
     
-    // Re-apply schedule state and restart schedule timer if enabled
-    if (_scheduleWasEnabled) {
+    // IMPORTANT: Always re-apply schedule state when resuming
+    // This ensures correct state after wake-ups (even if timer hasn't fired yet)
+    final config = context.read<ConfigProvider>();
+    if (config.scheduleEnabled) {
       _applyScheduleState();
       _scheduleTimer?.cancel();
       _scheduleTimer = Timer.periodic(const Duration(minutes: 1), (_) {
@@ -429,7 +440,19 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
   @override
   Widget build(BuildContext context) {
     // Cache screen size for optimized image loading
-    _screenSize = MediaQuery.of(context).size;
+    // IMPORTANT: Use physical pixels (multiply by devicePixelRatio)
+    final mediaQuerySize = MediaQuery.of(context).size;
+    final devicePixelRatio = MediaQuery.of(context).devicePixelRatio;
+    final physicalSize = Size(
+      mediaQuerySize.width * devicePixelRatio,
+      mediaQuerySize.height * devicePixelRatio,
+    );
+    if (_screenSize != physicalSize) {
+      if (kDebugMode) {
+        print('Screen size changed: ${_screenSize?.width?.toInt()}x${_screenSize?.height?.toInt()} -> ${physicalSize.width.toInt()}x${physicalSize.height.toInt()} (logical: ${mediaQuerySize.width.toInt()}x${mediaQuerySize.height.toInt()}, dpr: $devicePixelRatio)');
+      }
+      _screenSize = physicalSize;
+    }
     final config = context.watch<ConfigProvider>();
     
     // React to schedule config changes
