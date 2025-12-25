@@ -9,6 +9,10 @@ abstract class PhotoRepository {
 
   /// Initializes the repository (e.g. starts scanning/watching).
   Future<void> initialize();
+  
+  /// Reinitializes the repository (e.g. when photo directory changes).
+  /// Clears current state and rescans from the new directory.
+  Future<void> reinitialize();
 
   /// Cleans up resources (e.g. file watchers).
   void dispose();

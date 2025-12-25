@@ -23,7 +23,15 @@ class NextcloudSyncService implements SyncProvider {
   /// Factory for Public Share Links
   /// Link format: https://cloud.example.com/s/TOKEN
   factory NextcloudSyncService.fromPublicLink(String link, StorageProvider storageProvider) {
+    if (link.isEmpty) {
+      throw ArgumentError('Nextcloud public link cannot be empty');
+    }
+    
     final uri = Uri.parse(link);
+    if (uri.pathSegments.isEmpty) {
+      throw ArgumentError('Invalid Nextcloud public link: no path segments');
+    }
+    
     // Extract token from last segment
     final token = uri.pathSegments.last;
     // Construct WebDAV URL: https://cloud.example.com/public.php/webdav

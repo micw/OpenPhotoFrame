@@ -17,7 +17,7 @@ import 'infrastructure/services/noop_sync_service.dart';
 import 'infrastructure/services/photo_service.dart';
 import 'infrastructure/services/local_storage_provider.dart';
 import 'infrastructure/services/native_display_controller.dart';
-import 'infrastructure/repositories/file_system_photo_repository.dart';
+import 'infrastructure/repositories/hybrid_photo_repository.dart';
 import 'infrastructure/strategies/weighted_freshness_strategy.dart';
 import 'ui/screens/slideshow_screen.dart';
 
@@ -51,8 +51,10 @@ class OpenPhotoFrameApp extends StatelessWidget {
       providers: [
         // 1. Infrastructure Services (Singletons)
         ChangeNotifierProvider<ConfigProvider>.value(value: configProvider),
-        Provider<StorageProvider>(
-          create: (_) => LocalStorageProvider(),
+        ProxyProvider<ConfigProvider, StorageProvider>(
+          update: (_, config, previous) => 
+              previous ?? LocalStorageProvider(configProvider: config),
+          dispose: (_, storage) => (storage as LocalStorageProvider).dispose(),
         ),
         Provider<MetadataProvider>(
           create: (_) => FileMetadataProvider(),
@@ -65,19 +67,24 @@ class OpenPhotoFrameApp extends StatelessWidget {
           dispose: (_, controller) => controller.dispose(),
         ),
         
-        // Repository needs Storage and Metadata
-        ProxyProvider2<StorageProvider, MetadataProvider, PhotoRepository>(
-          update: (_, storage, metadata, __) => FileSystemPhotoRepository(
-            storageProvider: storage,
-            metadataProvider: metadata,
-          ),
+        // Repository needs Storage, Metadata, and Config - REUSE existing instance
+        ProxyProvider3<StorageProvider, MetadataProvider, ConfigProvider, PhotoRepository>(
+          update: (_, storage, metadata, config, previous) => 
+              previous ?? HybridPhotoRepository(
+                storageProvider: storage,
+                metadataProvider: metadata,
+                configProvider: config,
+              ),
           dispose: (_, repo) => repo.dispose(),
         ),
         
         // 2. Application Services (Dependent on Infrastructure)
         // Note: SyncProvider is created dynamically via factory to pick up config changes
+        // REUSE existing PhotoService instance
         ProxyProvider3<StorageProvider, PlaylistStrategy, PhotoRepository, PhotoService>(
-          update: (context, storage, playlist, repo, __) {
+          update: (context, storage, playlist, repo, previous) {
+            if (previous != null) return previous;
+            
             final config = context.read<ConfigProvider>();
             
             // Factory function that creates a SyncProvider with current config
@@ -86,10 +93,10 @@ class OpenPhotoFrameApp extends StatelessWidget {
               final sourceConfig = config.getSourceConfig(type);
 
               if (type == 'nextcloud_link') {
-                return NextcloudSyncService.fromPublicLink(
-                  sourceConfig['url'] ?? '',
-                  storage,
-                );
+                final url = sourceConfig['url'] ?? '';
+                if (url.isNotEmpty) {
+                  return NextcloudSyncService.fromPublicLink(url, storage);
+                }
               }
               
               return NoOpSyncService();
@@ -100,6 +107,7 @@ class OpenPhotoFrameApp extends StatelessWidget {
               playlistStrategy: playlist,
               repository: repo,
               configProvider: config,
+              storageProvider: storage,
             );
           },
           dispose: (_, service) => service.dispose(),

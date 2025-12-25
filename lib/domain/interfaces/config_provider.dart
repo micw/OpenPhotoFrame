@@ -59,4 +59,8 @@ abstract class ConfigProvider extends ChangeNotifier {
   
   bool get useNativeScreenOff; // Use Device Admin lockNow() for true screen off (Android)
   set useNativeScreenOff(bool value);
+  
+  // Custom photo directory (for "local folder" mode)
+  String? get customPhotoPath; // null = use internal app folder, otherwise external path
+  set customPhotoPath(String? value);
 }

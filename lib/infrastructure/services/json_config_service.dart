@@ -224,4 +224,17 @@ class JsonConfigService extends ConfigProvider {
   set useNativeScreenOff(bool value) {
     _config['use_native_screen_off'] = value;
   }
+  
+  // Custom photo directory (for "local folder" mode)
+  @override
+  String? get customPhotoPath => _config['custom_photo_path'];
+  
+  @override
+  set customPhotoPath(String? value) {
+    if (value == null) {
+      _config.remove('custom_photo_path');
+    } else {
+      _config['custom_photo_path'] = value;
+    }
+  }
 }

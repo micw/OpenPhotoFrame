@@ -101,6 +101,14 @@ If typing the Nextcloud URL on a tablet is cumbersome, you can paste it via ADB:
 adb shell input text 'https://cloud.example.com/s/YOUR_SHARE_TOKEN'
 ```
 
+### 💡 Tip: Disable Lock Screen via ADB
+
+Some Android devices (especially Huawei with EMUI) don't allow disabling the lock screen in the settings UI. You can disable it via ADB:
+
+```bash
+adb shell locksettings set-disabled true
+```
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before submitting a pull request.

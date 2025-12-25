@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:open_photo_frame/domain/interfaces/metadata_provider.dart';
@@ -12,6 +13,12 @@ class MockStorageProvider implements StorageProvider {
   
   @override
   Future<Directory> getPhotoDirectory() async => _testDir;
+  
+  @override
+  bool get isReadOnly => false;
+  
+  @override
+  Stream<void> get onDirectoryChanged => const Stream.empty();
 }
 
 class MockMetadataProvider implements MetadataProvider {

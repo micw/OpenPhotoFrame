@@ -253,16 +253,25 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
   Future<void> _initService() async {
     final service = context.read<PhotoService>();
     
-    // Listen for updates
+    // Listen for updates (photo list changed due to sync or directory change)
     _photosSubscription = service.onPhotosChanged.listen((_) {
       if (mounted) {
-        // If we were loading or showing "No photos", try to start slideshow
-        if (_isLoading || _currentPhoto == null) {
-           final next = service.nextPhoto();
-           if (next != null) {
-             _transitionTo(next);
-             _startTimer();
-           }
+        final photoService = context.read<PhotoService>();
+        
+        // Always try to get next photo after directory change or sync
+        final next = photoService.nextPhoto();
+        if (next != null) {
+          // Only transition if it's a different photo
+          if (next.file.path != _currentPhoto?.file.path) {
+            _transitionTo(next);
+          }
+          _startTimer();
+        } else if (_currentPhoto != null) {
+          // No photos available anymore - show empty state
+          setState(() {
+            _currentPhoto = null;
+            _isLoading = false;
+          });
         }
       }
     });

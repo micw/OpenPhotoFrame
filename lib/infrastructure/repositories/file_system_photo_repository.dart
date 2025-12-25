@@ -34,6 +34,23 @@ class FileSystemPhotoRepository implements PhotoRepository {
     await _scanLocalPhotos();
     _setupFileWatcher();
   }
+  
+  @override
+  Future<void> reinitialize() async {
+    _log.info("Reinitializing FileSystemPhotoRepository (directory changed)...");
+    
+    // 1. Stop existing file watcher
+    await _dirWatcher?.cancel();
+    _dirWatcher = null;
+    
+    // 2. Clear current photos (don't notify yet - wait for scan to complete)
+    _photos = [];
+    
+    // 3. Scan new directory and setup new watcher
+    // _scanLocalPhotos will notify listeners after scan is complete
+    await _scanLocalPhotos();
+    _setupFileWatcher();
+  }
 
   void _setupFileWatcher() async {
     try {

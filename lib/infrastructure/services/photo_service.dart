@@ -4,6 +4,7 @@ import 'package:logging/logging.dart';
 import '../../domain/interfaces/config_provider.dart';
 import '../../domain/interfaces/playlist_strategy.dart';
 import '../../domain/interfaces/sync_provider.dart';
+import '../../domain/interfaces/storage_provider.dart';
 import '../../domain/interfaces/photo_repository.dart';
 import '../../domain/models/photo_entry.dart';
 
@@ -15,6 +16,7 @@ class PhotoService {
   final PlaylistStrategy _playlistStrategy;
   final PhotoRepository _repository;
   final ConfigProvider _configProvider;
+  final StorageProvider _storageProvider;
   final _log = Logger('PhotoService');
 
   bool _isInitialized = false;
@@ -28,16 +30,21 @@ class PhotoService {
   // History management
   final List<PhotoEntry> _history = [];
   int _historyIndex = -1;
+  
+  // Directory change subscription
+  StreamSubscription? _directoryChangeSubscription;
 
   PhotoService({
     required SyncProviderFactory syncProviderFactory,
     required PlaylistStrategy playlistStrategy,
     required PhotoRepository repository,
     required ConfigProvider configProvider,
+    required StorageProvider storageProvider,
   })  : _syncProviderFactory = syncProviderFactory,
         _playlistStrategy = playlistStrategy,
         _repository = repository,
-        _configProvider = configProvider;
+        _configProvider = configProvider,
+        _storageProvider = storageProvider;
 
   Stream<void> get onPhotosChanged => _repository.onPhotosChanged;
   
@@ -51,10 +58,35 @@ class PhotoService {
     // 1. Initialize Repository (Load local photos)
     await _repository.initialize();
     
-    // 2. Start Sync in Background
+    // 2. Listen for directory changes
+    _directoryChangeSubscription = _storageProvider.onDirectoryChanged.listen((_) {
+      _onDirectoryChanged();
+    });
+    
+    // 3. Start Sync in Background
     _startBackgroundSync();
     
     _isInitialized = true;
+  }
+  
+  /// Called when the photo directory changes (e.g., user selected different folder)
+  Future<void> _onDirectoryChanged() async {
+    _log.info("Photo directory changed, reinitializing...");
+    
+    // 1. Reset slideshow state (history is no longer valid)
+    _resetState();
+    
+    // 2. Reinitialize repository with new directory
+    await _repository.reinitialize();
+    
+    _log.info("Directory change complete");
+  }
+  
+  /// Resets slideshow state (history, current position)
+  void _resetState() {
+    _history.clear();
+    _historyIndex = -1;
+    _log.info("Slideshow state reset");
   }
 
   void _startBackgroundSync() {
@@ -109,6 +141,12 @@ class PhotoService {
   
   /// Internal method that actually executes the sync
   Future<void> _executeSync() async {
+    // Skip sync if storage is read-only (external user folder)
+    if (_storageProvider.isReadOnly) {
+      _log.info("Storage is read-only (local folder mode), skipping sync");
+      return;
+    }
+    
     if (_isSyncing) return; // Double-check
     
     _isSyncing = true;
@@ -179,6 +217,7 @@ class PhotoService {
   }
   
   void dispose() {
+    _directoryChangeSubscription?.cancel();
     _repository.dispose();
   }
 }

@@ -1,7 +1,13 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:photo_manager/photo_manager.dart';
 import '../../domain/interfaces/config_provider.dart';
+import '../../domain/interfaces/storage_provider.dart';
+import '../../domain/interfaces/photo_repository.dart';
+import '../../infrastructure/repositories/hybrid_photo_repository.dart';
 import '../../infrastructure/services/photo_service.dart';
 import '../../infrastructure/services/nextcloud_sync_service.dart';
 import '../../infrastructure/services/autostart_service.dart';
@@ -42,9 +48,19 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   String? _connectionTestResult;
   bool? _connectionTestSuccess;
   
+  // Local folder path
+  late String _localFolderPath;
+  String _defaultFolderPath = '';
+  
+  // Device photos album selection (Android only)
+  List<AssetPathEntity> _availableAlbums = [];
+  String? _selectedAlbumId;
+  bool _isLoadingAlbums = false;
+  
   // Track original values to detect changes
   late String _originalSyncType;
   late String _originalNextcloudUrl;
+  late String _originalLocalFolderPath;
   
   @override
   void initState() {
@@ -54,7 +70,10 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     final config = context.read<ConfigProvider>();
     _slideDurationMinutes = (config.slideDurationSeconds / 60).round().clamp(1, 15);
     _transitionDurationSeconds = (config.transitionDurationMs / 1000.0).clamp(0.5, 5.0);
-    _syncType = config.activeSourceType.isEmpty ? 'none' : config.activeSourceType;
+    // Default sync type: app_folder on Android, local_folder on Desktop
+    final defaultSyncType = Platform.isAndroid ? 'app_folder' : 'local_folder';
+    _syncType = config.activeSourceType.isEmpty ? defaultSyncType : config.activeSourceType;
+    _localFolderPath = config.customPhotoPath ?? '';
     _syncIntervalMinutes = config.syncIntervalMinutes;
     _deleteOrphanedFiles = config.deleteOrphanedFiles;
     _autostartOnBoot = config.autostartOnBoot;
@@ -79,6 +98,35 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     // Store original values for comparison on save
     _originalSyncType = _syncType;
     _originalNextcloudUrl = nextcloudConfig['url'] ?? '';
+    _originalLocalFolderPath = _localFolderPath;
+    
+    // Load default folder path async
+    _loadDefaultFolderPath();
+  }
+  
+  Future<void> _loadDefaultFolderPath() async {
+    // Get the actual default directory (not custom path)
+    // We need to compute it the same way StorageProvider does
+    Directory? baseDir;
+    String subDirName = 'photos'; // Default for Android/Sandbox
+
+    if (Platform.isLinux || Platform.isWindows || Platform.isMacOS) {
+      // On Desktop, use a distinct folder name in Documents
+      baseDir = await getApplicationDocumentsDirectory();
+      subDirName = 'OpenPhotoFrame';
+    } else if (Platform.isAndroid) {
+      baseDir = await getExternalStorageDirectory();
+    }
+    
+    baseDir ??= await getApplicationDocumentsDirectory();
+
+    final dir = Directory('${baseDir.path}/$subDirName');
+    
+    if (mounted) {
+      setState(() {
+        _defaultFolderPath = dir.path;
+      });
+    }
   }
   
   @override
@@ -109,7 +157,16 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     
     config.slideDurationSeconds = _slideDurationMinutes * 60;
     config.transitionDurationMs = (_transitionDurationSeconds * 1000).round();
-    config.activeSourceType = _syncType == 'none' ? '' : _syncType;
+    // app_folder and local_folder both use empty activeSourceType (no sync)
+    final isLocalMode = _syncType == 'local_folder' || _syncType == 'app_folder';
+    config.activeSourceType = isLocalMode ? '' : _syncType;
+    
+    // Set custom photo path for local folder mode (Desktop only)
+    if (_syncType == 'local_folder') {
+      config.customPhotoPath = _localFolderPath.isNotEmpty ? _localFolderPath : null;
+    } else {
+      config.customPhotoPath = null;
+    }
     config.syncIntervalMinutes = _syncIntervalMinutes;
     config.deleteOrphanedFiles = _deleteOrphanedFiles;
     config.autostartOnBoot = _autostartOnBoot;
@@ -226,10 +283,10 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           const SizedBox(height: 16),
           
           // === SYNC SETTINGS ===
-          _buildSectionHeader('Sync'),
+          _buildSectionHeader('Photo Source'),
           const SizedBox(height: 8),
           
-          // Sync Type Selection
+          // Sync Type Selection (includes inline folder selector for local_folder)
           _buildSyncTypeSelector(),
           
           // Nextcloud URL (only visible if nextcloud selected)
@@ -238,8 +295,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             _buildNextcloudSettings(),
           ],
           
-          // Sync options (only visible if sync enabled)
-          if (_syncType != 'none') ...[
+          // Sync options (only visible if sync enabled - i.e. Nextcloud)
+          if (_syncType == 'nextcloud_link') ...[
             const SizedBox(height: 16),
             
             // Sync Interval Slider
@@ -381,15 +438,43 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        RadioListTile<String>(
-          title: const Text('No Sync'),
-          subtitle: const Text('Use only local photos'),
-          value: 'none',
-          groupValue: _syncType,
-          onChanged: (value) {
-            setState(() => _syncType = value!);
-          },
-        ),
+        // On Android: "App Folder", on Desktop: "Local Folder"
+        if (Platform.isAndroid) ...[
+          RadioListTile<String>(
+            title: const Text('App Folder'),
+            subtitle: const Text('Photos stored in app folder'),
+            value: 'app_folder',
+            groupValue: _syncType,
+            onChanged: (value) {
+              setState(() => _syncType = value!);
+            },
+          ),
+          if (_syncType == 'app_folder')
+            _buildAppFolderInfo(),
+          RadioListTile<String>(
+            title: const Text('Device Photos'),
+            subtitle: const Text('Show photos from your device'),
+            value: 'device_photos',
+            groupValue: _syncType,
+            onChanged: (value) {
+              setState(() => _syncType = value!);
+            },
+          ),
+          if (_syncType == 'device_photos')
+            _buildDevicePhotosSelector(),
+        ] else ...[
+          RadioListTile<String>(
+            title: const Text('Local Folder'),
+            subtitle: const Text('Use photos from a local folder'),
+            value: 'local_folder',
+            groupValue: _syncType,
+            onChanged: (value) {
+              setState(() => _syncType = value!);
+            },
+          ),
+          if (_syncType == 'local_folder')
+            _buildLocalFolderSelector(),
+        ],
         RadioListTile<String>(
           title: const Text('Nextcloud'),
           subtitle: const Text('Sync from Nextcloud public share link'),
@@ -401,6 +486,251 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
         ),
       ],
     );
+  }
+  
+  /// Android only: Show app folder path with warning
+  Widget _buildAppFolderInfo() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 56, right: 16, bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            _getDefaultFolderPath(),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                size: 16,
+                color: Theme.of(context).colorScheme.error,
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Copy photos to this folder. They will be deleted when uninstalling the app.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.error,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+  
+  /// Android only: Device photos album selector using MediaStore
+  Widget _buildDevicePhotosSelector() {
+    return Padding(
+      padding: const EdgeInsets.only(left: 56, right: 16, bottom: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (_isLoadingAlbums)
+            const Row(
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                ),
+                SizedBox(width: 8),
+                Text('Loading albums...'),
+              ],
+            )
+          else if (_availableAlbums.isEmpty)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Tap to load device photo albums',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _loadDeviceAlbums,
+                  icon: const Icon(Icons.refresh, size: 18),
+                  label: const Text('Load'),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+              ],
+            )
+          else
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<String>(
+                    value: _selectedAlbumId,
+                    decoration: const InputDecoration(
+                      labelText: 'Photo Album',
+                      isDense: true,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    ),
+                    items: [
+                      const DropdownMenuItem<String>(
+                        value: null,
+                        child: Text('All Photos'),
+                      ),
+                      ..._availableAlbums.map((album) => DropdownMenuItem<String>(
+                        value: album.id,
+                        child: Text(album.name),
+                      )),
+                    ],
+                    onChanged: (value) {
+                      setState(() => _selectedAlbumId = value);
+                      _onAlbumSelected(value);
+                    },
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: _loadDeviceAlbums,
+                  icon: const Icon(Icons.refresh, size: 20),
+                  tooltip: 'Refresh albums',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+        ],
+      ),
+    );
+  }
+  
+  Future<void> _loadDeviceAlbums() async {
+    setState(() => _isLoadingAlbums = true);
+    
+    try {
+      final permission = await PhotoManager.requestPermissionExtend();
+      if (!permission.isAuth) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Photo permission denied')),
+          );
+        }
+        return;
+      }
+      
+      final albums = await PhotoManager.getAssetPathList(type: RequestType.image);
+      
+      // Load current selection from config
+      final photoRepo = context.read<PhotoRepository>();
+      String? currentAlbumId;
+      if (photoRepo is HybridPhotoRepository) {
+        final config = context.read<ConfigProvider>();
+        final sourceConfig = config.getSourceConfig('device_photos');
+        currentAlbumId = sourceConfig?['albumId'] as String?;
+      }
+      
+      if (mounted) {
+        setState(() {
+          _availableAlbums = albums;
+          _selectedAlbumId = currentAlbumId;
+          _isLoadingAlbums = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingAlbums = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading albums: $e')),
+        );
+      }
+    }
+  }
+  
+  void _onAlbumSelected(String? albumId) {
+    final photoRepo = context.read<PhotoRepository>();
+    if (photoRepo is HybridPhotoRepository) {
+      photoRepo.setSelectedAlbum(albumId);
+    }
+  }
+  
+  /// Desktop only: Local folder with Change button
+  Widget _buildLocalFolderSelector() {
+    // Show the actual path (either custom or default)
+    final displayPath = _localFolderPath.isNotEmpty 
+        ? _localFolderPath 
+        : _getDefaultFolderPath();
+    
+    return Padding(
+      padding: const EdgeInsets.only(left: 56, right: 16, bottom: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              displayPath,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+            ),
+          ),
+          const SizedBox(width: 8),
+          TextButton.icon(
+            onPressed: _pickFolder,
+            icon: const Icon(Icons.folder_open, size: 18),
+            label: const Text('Change'),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+          ),
+          if (_localFolderPath.isNotEmpty) ...[
+            const SizedBox(width: 4),
+            TextButton(
+              onPressed: () {
+                setState(() => _localFolderPath = '');
+              },
+              style: TextButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              child: const Text('Reset'),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+  
+  String _getDefaultFolderPath() {
+    return _defaultFolderPath.isNotEmpty ? _defaultFolderPath : 'Loading...';
+  }
+  
+  Future<void> _pickFolder() async {
+    try {
+      String? selectedDirectory = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: 'Select Photo Folder',
+      );
+      
+      if (selectedDirectory != null) {
+        setState(() {
+          _localFolderPath = selectedDirectory;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to pick folder: $e')),
+        );
+      }
+    }
   }
   
   Widget _buildNextcloudSettings() {

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:open_photo_frame/domain/interfaces/metadata_provider.dart';
@@ -6,11 +7,29 @@ import 'package:open_photo_frame/infrastructure/repositories/file_system_photo_r
 
 // Mocks
 class MockStorageProvider implements StorageProvider {
-  final Directory _dir;
+  Directory _dir;
+  final _directoryChangedController = StreamController<void>.broadcast();
+  
   MockStorageProvider(this._dir);
   
   @override
   Future<Directory> getPhotoDirectory() async => _dir;
+  
+  @override
+  bool get isReadOnly => false;
+  
+  @override
+  Stream<void> get onDirectoryChanged => _directoryChangedController.stream;
+  
+  /// Changes the directory and notifies listeners
+  void changeDirectory(Directory newDir) {
+    _dir = newDir;
+    _directoryChangedController.add(null);
+  }
+  
+  void dispose() {
+    _directoryChangedController.close();
+  }
 }
 
 class MockMetadataProvider implements MetadataProvider {
