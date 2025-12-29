@@ -1,0 +1,8 @@
+Local Photo Sources
+
+- NEW: Use photos from device gallery (Android) or local folder (Linux/Desktop)
+- Platform-specific photo source options:
+  • Android: "App Folder", "Device Photos" (via MediaStore), or "Nextcloud"
+  • Desktop: "Local Folder" or "Nextcloud"
+- Album selection for "Device Photos" mode on Android
+- Clean resource management when switching between photo sources
