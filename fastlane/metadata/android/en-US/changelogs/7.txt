@@ -1,0 +1,4 @@
+Improved Device Admin handling:
+- Added warning banner when Device Admin is active
+- Direct link to Device Admin settings for easier uninstallation
+- Better user guidance for disabling permissions before uninstalling

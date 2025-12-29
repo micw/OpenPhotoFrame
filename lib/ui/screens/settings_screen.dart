@@ -218,6 +218,9 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // === DEVICE ADMIN WARNING ===
+          if (Platform.isAndroid && _deviceAdminEnabled) ..._buildDeviceAdminWarning(),
+          
           // === SLIDESHOW SETTINGS ===
           _buildSectionHeader('Slideshow'),
           const SizedBox(height: 8),
@@ -1093,6 +1096,59 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     // Check again after a delay (user might grant permission)
     await Future.delayed(const Duration(seconds: 1));
     await _checkDeviceAdmin();
+  }
+
+  Future<void> _openDeviceAdminSettings() async {
+    await NativeScreenControlService.openDeviceAdminSettings();
+  }
+
+  List<Widget> _buildDeviceAdminWarning() {
+    return [
+      Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.orange.shade50,
+          border: Border.all(color: Colors.orange.shade300),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.info_outline, color: Colors.orange.shade700),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Device Admin Active',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange.shade900,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'To uninstall this app, you must first disable Device Admin permission in Android settings.',
+              style: TextStyle(color: Colors.orange.shade900, fontSize: 13),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: _openDeviceAdminSettings,
+              icon: const Icon(Icons.settings, size: 18),
+              label: const Text('Open Device Admin Settings'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.orange.shade700,
+                side: BorderSide(color: Colors.orange.shade300),
+              ),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 24),
+    ];
   }
   
   List<Widget> _buildScheduleSettings() {

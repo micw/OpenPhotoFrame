@@ -40,6 +40,20 @@ class NativeScreenControlService {
       print('Error requesting Device Admin: $e');
     }
   }
+
+  /// Open the Device Admin settings where the user can disable this app.
+  /// 
+  /// This is useful for uninstalling the app, which requires disabling
+  /// Device Admin first.
+  static Future<void> openDeviceAdminSettings() async {
+    if (!isSupported) return;
+    
+    try {
+      await _channel.invokeMethod('openDeviceAdminSettings');
+    } catch (e) {
+      print('Error opening Device Admin settings: $e');
+    }
+  }
   
   /// Turn the screen off using lockNow().
   /// 
