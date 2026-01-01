@@ -258,13 +258,18 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
       if (mounted) {
         final photoService = context.read<PhotoService>();
         
-        // Always try to get next photo after directory change or sync
+        // Only react if the current photo is no longer in the list
+        // This handles: directory change, photo deleted
+        // This ignores: new photos added via sync (current photo still valid)
+        if (_currentPhoto != null && photoService.containsPhoto(_currentPhoto!)) {
+          // Current photo still exists - do nothing, keep displaying it
+          return;
+        }
+        
+        // Current photo is gone (or we have none) - try to get a new one
         final next = photoService.nextPhoto();
         if (next != null) {
-          // Only transition if it's a different photo
-          if (next.file.path != _currentPhoto?.file.path) {
-            _transitionTo(next);
-          }
+          _transitionTo(next);
           _startTimer();
         } else if (_currentPhoto != null) {
           // No photos available anymore - show empty state

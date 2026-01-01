@@ -216,6 +216,11 @@ class PhotoService {
     return _history.isNotEmpty ? _history[_historyIndex] : null;
   }
   
+  /// Check if a photo is still in the current photo list
+  bool containsPhoto(PhotoEntry photo) {
+    return _repository.photos.any((p) => p.file.path == photo.file.path);
+  }
+  
   void dispose() {
     _directoryChangeSubscription?.cancel();
     _repository.dispose();
