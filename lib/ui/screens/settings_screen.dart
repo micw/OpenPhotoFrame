@@ -40,6 +40,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   late String _photoInfoPosition;
   late String _photoInfoSize;
   late bool _geocodingEnabled;
+  late bool _useScriptFontForMetadata;
   
   // Display schedule settings
   late bool _scheduleEnabled;
@@ -99,6 +100,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     _photoInfoPosition = config.photoInfoPosition;
     _photoInfoSize = config.photoInfoSize;
     _geocodingEnabled = config.geocodingEnabled;
+    _useScriptFontForMetadata = config.useScriptFontForMetadata;
     
     // Display schedule settings
     _scheduleEnabled = config.scheduleEnabled;
@@ -198,6 +200,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     config.photoInfoPosition = _photoInfoPosition;
     config.photoInfoSize = _photoInfoSize;
     config.geocodingEnabled = _geocodingEnabled;
+    config.useScriptFontForMetadata = _useScriptFontForMetadata;
     
     // Display schedule settings
     config.scheduleEnabled = _scheduleEnabled;
@@ -329,6 +332,16 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             _buildPhotoInfoPositionSelector(),
             const SizedBox(height: 8),
             _buildPhotoInfoSizeSelector(),
+            const SizedBox(height: 16),
+            SwitchListTile(
+              title: const Text('Use Script Font'),
+              subtitle: const Text('Display metadata in elegant handwritten style'),
+              secondary: const Icon(Icons.font_download),
+              value: _useScriptFontForMetadata,
+              onChanged: (value) {
+                setState(() => _useScriptFontForMetadata = value);
+              },
+            ),
             const SizedBox(height: 16),
             SwitchListTile(
               title: const Text('Resolve Location Names'),

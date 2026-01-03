@@ -95,6 +95,11 @@ flutter:
   assets:
     - assets/config.json
 
+  fonts:
+    - family: RougeScript
+      fonts:
+        - asset: assets/fonts/RougeScript-Regular.ttf
+
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 

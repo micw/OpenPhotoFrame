@@ -248,7 +248,7 @@ class JsonConfigService extends ConfigProvider {
   }
   
   @override
-  String get photoInfoPosition => _config['photo_info_position'] ?? 'bottomLeft';
+  String get photoInfoPosition => _config['photo_info_position'] ?? 'topLeft';
   
   @override
   set photoInfoPosition(String value) {
@@ -261,6 +261,14 @@ class JsonConfigService extends ConfigProvider {
   @override
   set photoInfoSize(String value) {
     _config['photo_info_size'] = value;
+  }
+  
+  @override
+  bool get useScriptFontForMetadata => _config['use_script_font_for_metadata'] ?? false;
+  
+  @override
+  set useScriptFontForMetadata(bool value) {
+    _config['use_script_font_for_metadata'] = value;
   }
   
   // Geocoding settings

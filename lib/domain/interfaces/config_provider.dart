@@ -74,6 +74,9 @@ abstract class ConfigProvider extends ChangeNotifier {
   String get photoInfoSize; // 'small', 'medium', 'large'
   set photoInfoSize(String value);
   
+  bool get useScriptFontForMetadata; // Use handwritten script font (Rouge Script) for metadata
+  set useScriptFontForMetadata(bool value);
+  
   // Geocoding settings
   bool get geocodingEnabled; // Enable reverse geocoding for GPS coordinates
   set geocodingEnabled(bool value);

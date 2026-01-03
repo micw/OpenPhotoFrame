@@ -9,6 +9,7 @@ class PhotoInfoOverlay extends StatelessWidget {
   final String position; // 'bottomRight', 'bottomLeft', 'topRight', 'topLeft'
   final String size; // 'small', 'medium', 'large'
   final String? locationName; // Resolved location name from geocoding
+  final bool useScriptFont; // Use Rouge Script font for elegant handwritten style
 
   const PhotoInfoOverlay({
     super.key,
@@ -16,6 +17,7 @@ class PhotoInfoOverlay extends StatelessWidget {
     required this.position,
     this.size = 'small',
     this.locationName,
+    this.useScriptFont = false,
   });
 
   Alignment get _alignment {
@@ -103,12 +105,12 @@ class PhotoInfoOverlay extends StatelessWidget {
   double get _fontSize {
     switch (size) {
       case 'large':
-        return 32;
+        return 48;
       case 'medium':
-        return 26;
+        return 39;
       case 'small':
       default:
-        return 20;
+        return 30;
     }
   }
 
@@ -116,6 +118,7 @@ class PhotoInfoOverlay extends StatelessWidget {
     return Text(
       text,
       style: TextStyle(
+        fontFamily: useScriptFont ? 'RougeScript' : null,
         fontSize: _fontSize,
         fontWeight: FontWeight.w400,
         color: Colors.white,
