@@ -11,6 +11,7 @@ import '../../domain/interfaces/metadata_provider.dart';
 import '../../infrastructure/services/photo_service.dart';
 import '../../infrastructure/services/native_display_controller.dart';
 import '../../infrastructure/services/geocoding_service.dart';
+import '../../infrastructure/services/keep_alive_service.dart';
 import '../../domain/models/photo_entry.dart';
 import '../widgets/photo_slide.dart';
 import '../widgets/clock_overlay.dart';
@@ -68,6 +69,7 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     // Initialize Service
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initService();
+      _initKeepAliveService();
       // Schedule init is now handled reactively in build() via _updateDisplaySchedule()
     });
   }
@@ -509,6 +511,16 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     // Remove lifecycle observer
     WidgetsBinding.instance.removeObserver(this);
     
+    // Remove config listener
+    try {
+      context.read<ConfigProvider>().removeListener(_onConfigChanged);
+    } catch (e) {
+      // Ignore if context is already disposed
+    }
+    
+    // Stop Keep Alive service if it was running
+    KeepAliveService.stopService();
+    
     _timer?.cancel();
     _photosSubscription?.cancel();
     _scheduleSubscription?.cancel();
@@ -677,6 +689,30 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
         ],
       ),
     );
+  }
+
+  /// Initialize Keep Alive service based on config
+  Future<void> _initKeepAliveService() async {
+    final config = context.read<ConfigProvider>();
+    if (config.keepAliveEnabled) {
+      await KeepAliveService.startService();
+    }
+    
+    // Listen to config changes to start/stop service
+    config.addListener(_onConfigChanged);
+  }
+
+  /// Handle config changes for Keep Alive service
+  void _onConfigChanged() {
+    final config = context.read<ConfigProvider>();
+    final shouldRun = config.keepAliveEnabled;
+    
+    // Start or stop service based on config
+    if (shouldRun) {
+      KeepAliveService.startService();
+    } else {
+      KeepAliveService.stopService();
+    }
   }
 }
 

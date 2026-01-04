@@ -31,6 +31,9 @@ abstract class ConfigProvider extends ChangeNotifier {
   bool get autostartOnBoot; // Start app when device boots (Android only)
   set autostartOnBoot(bool value);
   
+  bool get keepAliveEnabled; // Keep app running with foreground service (Android only)
+  set keepAliveEnabled(bool value);
+  
   // Clock display settings
   bool get showClock; // Show clock overlay
   set showClock(bool value);

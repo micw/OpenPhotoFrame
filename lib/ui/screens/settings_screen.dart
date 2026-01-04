@@ -13,6 +13,8 @@ import '../../infrastructure/services/photo_service.dart';
 import '../../infrastructure/services/nextcloud_sync_service.dart';
 import '../../infrastructure/services/autostart_service.dart';
 import '../../infrastructure/services/native_screen_control_service.dart';
+import '../../infrastructure/services/keep_alive_service.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -29,6 +31,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   late int _syncIntervalMinutes;
   late bool _deleteOrphanedFiles;
   late bool _autostartOnBoot;
+  late bool _keepAliveEnabled;
   
   // Clock settings
   late bool _showClock;
@@ -91,6 +94,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     _syncIntervalMinutes = config.syncIntervalMinutes;
     _deleteOrphanedFiles = config.deleteOrphanedFiles;
     _autostartOnBoot = config.autostartOnBoot;
+    _keepAliveEnabled = config.keepAliveEnabled;
     _showClock = config.showClock;
     _clockSize = config.clockSize;
     _clockPosition = config.clockPosition;
@@ -191,6 +195,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     config.syncIntervalMinutes = _syncIntervalMinutes;
     config.deleteOrphanedFiles = _deleteOrphanedFiles;
     config.autostartOnBoot = _autostartOnBoot;
+    config.keepAliveEnabled = _keepAliveEnabled;
     config.showClock = _showClock;
     config.clockSize = _clockSize;
     config.clockPosition = _clockPosition;
@@ -441,6 +446,39 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
               value: _autostartOnBoot,
               onChanged: (value) {
                 setState(() => _autostartOnBoot = value);
+              },
+            ),
+            
+            const SizedBox(height: 8),
+            
+            SwitchListTile(
+              title: const Text('Keep App Running'),
+              subtitle: const Text('Prevent app from being stopped on low memory'),
+              secondary: const Icon(Icons.memory),
+              value: _keepAliveEnabled,
+              onChanged: (value) async {
+                if (value) {
+                  // Show explanation dialog before enabling
+                  final confirmed = await _showKeepAliveExplanation();
+                  if (!confirmed) return;
+                  
+                  // Check if notification permission is needed
+                  if (await KeepAliveService.shouldRequestNotificationPermission()) {
+                    final permissionGranted = await _requestNotificationPermission();
+                    if (!permissionGranted) {
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Notification permission is required for Keep App Running'),
+                            duration: Duration(seconds: 4),
+                          ),
+                        );
+                      }
+                      return;
+                    }
+                  }
+                }
+                setState(() => _keepAliveEnabled = value);
               },
             ),
             
@@ -1457,6 +1495,75 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
         ],
       ),
     );
+  }
+
+  /// Show explanation dialog for Keep App Running feature
+  Future<bool> _showKeepAliveExplanation() async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Keep App Running'),
+          content: const SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'What does this do?',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'This feature keeps the photo frame app running continuously, even when the device is low on memory.',
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Why would I need this?',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'On older devices with limited RAM, Android may stop the app to free up memory. This prevents that by running the app as a foreground service.',
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'What will happen?',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 8),
+                Text(
+                  '• A small notification will appear in the status bar\n'
+                  '• The app will be less likely to be stopped by Android\n'
+                  '• On Android 13+, you\'ll need to grant notification permission',
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'You can disable this at any time from the settings.',
+                  style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Enable'),
+            ),
+          ],
+        );
+      },
+    ) ?? false;
+  }
+
+  /// Request notification permission (Android 13+)
+  Future<bool> _requestNotificationPermission() async {
+    final status = await Permission.notification.request();
+    return status.isGranted;
   }
   
   Widget _buildPhotoInfoPositionButton(String position, String label) {

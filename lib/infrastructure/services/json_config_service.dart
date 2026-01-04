@@ -151,6 +151,14 @@ class JsonConfigService extends ConfigProvider {
     _config['autostart_on_boot'] = value;
   }
   
+  @override
+  bool get keepAliveEnabled => _config['keep_alive_enabled'] ?? false;
+  
+  @override
+  set keepAliveEnabled(bool value) {
+    _config['keep_alive_enabled'] = value;
+  }
+  
   // Clock display settings
   @override
   bool get showClock => _config['show_clock'] ?? true;

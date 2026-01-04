@@ -7,6 +7,7 @@ import io.flutter.embedding.engine.FlutterEngine
 
 class MainActivity : FlutterActivity() {
     private lateinit var screenControlHandler: ScreenControlHandler
+    private lateinit var keepAliveHandler: KeepAliveHandler
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,5 +34,8 @@ class MainActivity : FlutterActivity() {
         
         screenControlHandler = ScreenControlHandler(this)
         screenControlHandler.configureChannel(flutterEngine)
+        
+        keepAliveHandler = KeepAliveHandler(this)
+        keepAliveHandler.configureChannel(flutterEngine)
     }
 }
