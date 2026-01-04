@@ -1,0 +1,160 @@
+{
+  "@@locale": "en",
+  
+  "settings": "Settings",
+  
+  "sectionSlideshow": "Slideshow",
+  "slideDuration": "Slide Duration",
+  "transitionDuration": "Transition Duration",
+  "unitMinutes": "min",
+  "unitSeconds": "sec",
+  
+  "sectionClock": "Clock",
+  "showClock": "Show Clock",
+  "showClockSubtitle": "Display time on slideshow",
+  "size": "Size",
+  "position": "Position",
+  
+  "sectionPhotoInfo": "Photo Information",
+  "showPhotoInfo": "Show Photo Info",
+  "showPhotoInfoSubtitle": "Display date and location on slideshow",
+  "useScriptFont": "Use Script Font",
+  "useScriptFontSubtitle": "Display metadata in elegant handwritten style",
+  "resolveLocationNames": "Resolve Location Names",
+  "resolveLocationNamesSubtitle": "Use OpenStreetMap to show place names instead of coordinates",
+  "nominatimHint": "Uses Nominatim (OpenStreetMap). No API key required.",
+  
+  "sectionPhotoSource": "Photo Source",
+  "appFolder": "App Folder",
+  "appFolderSubtitle": "Photos stored in app folder",
+  "appFolderWarning": "Copy photos to this folder. They will be deleted when uninstalling the app.",
+  "devicePhotos": "Device Photos",
+  "devicePhotosSubtitle": "Show photos from your device",
+  "localFolder": "Local Folder",
+  "localFolderSubtitle": "Use photos from a local folder",
+  "nextcloud": "Nextcloud",
+  "nextcloudSubtitle": "Sync from Nextcloud public share link",
+  "loading": "Loading...",
+  "loadingAlbums": "Loading albums...",
+  "tapToLoadAlbums": "Tap to load device photo albums",
+  "load": "Load",
+  "photoAlbum": "Photo Album",
+  "allPhotos": "All Photos",
+  "refreshAlbums": "Refresh albums",
+  "change": "Change",
+  "reset": "Reset",
+  "photoPermissionDenied": "Photo permission denied",
+  "errorLoadingAlbums": "Error loading albums: {error}",
+  "@errorLoadingAlbums": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToPickFolder": "Failed to pick folder: {error}",
+  "@failedToPickFolder": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "selectPhotoFolder": "Select Photo Folder",
+  
+  "nextcloudPublicShareUrl": "Nextcloud Public Share URL",
+  "nextcloudUrlHint": "https://cloud.example.com/s/abc123",
+  "testConnection": "Test Connection",
+  "testing": "Testing...",
+  "connectionSuccessful": "Connection successful!",
+  
+  "autoSyncInterval": "Auto-Sync Interval",
+  "disabled": "Disabled",
+  "deleteOrphanedFiles": "Delete orphaned files",
+  "deleteOrphanedFilesSubtitle": "Remove local files that are no longer on server",
+  "syncNow": "Sync Now",
+  "syncing": "Syncing...",
+  "syncCompletedSuccessfully": "Sync completed successfully!",
+  "syncError": "Error: {error}",
+  "@syncError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "neverSynced": "Never synced",
+  "lastSyncJustNow": "Last sync: Just now",
+  "lastSyncMinutesAgo": "Last sync: {minutes} min ago",
+  "@lastSyncMinutesAgo": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "lastSyncHoursAgo": "Last sync: {hours} hours ago",
+  "@lastSyncHoursAgo": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "lastSyncDate": "Last sync: {date}",
+  "@lastSyncDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  
+  "sectionDisplaySchedule": "Display Schedule",
+  "dayNightSchedule": "Day/Night Schedule",
+  "dayNightScheduleSubtitle": "Turn off display at night",
+  "dayStartsAt": "Day starts at",
+  "nightStartsAt": "Night starts at",
+  "nativeScreenOff": "Native Screen Off",
+  "nativeScreenOffEnabledSubtitle": "Use Device Admin to completely turn off screen",
+  "nativeScreenOffDisabledSubtitle": "Requires Device Admin permission",
+  "deviceAdminExplanation": "Device Admin permission is required to fully turn off the screen. Without it, the display will only be dimmed.",
+  "grantDeviceAdmin": "Grant Device Admin",
+  "deviceAdminEnabled": "Device Admin enabled - screen will turn off completely",
+  "screenLockWarning": "Important: Screen lock (PIN/Pattern/Password) must be disabled for automatic wake-up to work. Go to Settings → Security → Screen lock → None.",
+  
+  "deviceAdminActive": "Device Admin Active",
+  "deviceAdminUninstallWarning": "To uninstall this app, you must first disable Device Admin permission in Android settings.",
+  "openDeviceAdminSettings": "Open Device Admin Settings",
+  
+  "sectionAndroid": "Android",
+  "startOnBoot": "Start on Boot",
+  "startOnBootSubtitle": "Automatically start app when device boots",
+  "keepAppRunning": "Keep App Running",
+  "keepAppRunningSubtitle": "Prevent app from being stopped on low memory",
+  "notificationPermissionRequired": "Notification permission is required for Keep App Running",
+  
+  "keepAliveDialogTitle": "Keep App Running",
+  "keepAliveWhatDoes": "What does this do?",
+  "keepAliveWhatDoesExplanation": "This feature keeps the photo frame app running continuously, even when the device is low on memory.",
+  "keepAliveWhyNeed": "Why would I need this?",
+  "keepAliveWhyNeedExplanation": "On older devices with limited RAM, Android may stop the app to free up memory. This prevents that by running the app as a foreground service.",
+  "keepAliveWhatHappens": "What will happen?",
+  "keepAliveWhatHappensExplanation": "• A small notification will appear in the status bar\n• The app will be less likely to be stopped by Android\n• On Android 13+, you'll need to grant notification permission",
+  "keepAliveDisableAnytime": "You can disable this at any time from the settings.",
+  "cancel": "Cancel",
+  "enable": "Enable",
+  
+  "about": "About",
+  "aboutSubtitle": "Open Photo Frame v{version}",
+  "@aboutSubtitle": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  
+  "noPhotosFound": "No photos found",
+  "tapCenterToOpenSettings": "Tap center of screen to open settings"
+}

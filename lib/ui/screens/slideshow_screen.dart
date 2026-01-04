@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import '../../l10n/app_localizations.dart';
 import '../../domain/interfaces/config_provider.dart';
 import '../../domain/interfaces/display_controller.dart';
 import '../../domain/interfaces/metadata_provider.dart';
@@ -564,19 +565,19 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
         body: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: _openSettings,
-          child: const Center(
+          child: Center(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(Icons.photo_library_outlined, size: 64, color: Colors.white54),
                 SizedBox(height: 16),
                 Text(
-                  "No photos found",
+                  AppLocalizations.of(context)!.noPhotosFound,
                   style: TextStyle(color: Colors.white, fontSize: 20),
                 ),
                 SizedBox(height: 8),
                 Text(
-                  "Tap center of screen to open settings",
+                  AppLocalizations.of(context)!.tapCenterToOpenSettings,
                   style: TextStyle(color: Colors.white54, fontSize: 14),
                 ),
               ],

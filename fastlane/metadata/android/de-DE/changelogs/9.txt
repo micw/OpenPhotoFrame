@@ -1,0 +1,3 @@
+Neue Funktionen:
+• Lokalisierungsunterstützung für Deutsch und Englisch (alle UI-Texte sind jetzt übersetzt)
+• Optionaler "App am Laufen halten" Vordergrunddienst verhindert Schließen bei wenig Speicher

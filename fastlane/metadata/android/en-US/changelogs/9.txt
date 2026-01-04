@@ -1,0 +1,4 @@
+New features:
+• Added localization support for German and English (all UI texts are now translated)
+• Optional "Keep App Running" foreground service to prevent OOM kills on low-memory devices
+* Optional handwriting font for foto metadata

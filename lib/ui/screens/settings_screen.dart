@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
+import '../../l10n/app_localizations.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:photo_manager/photo_manager.dart';
 import '../../domain/interfaces/config_provider.dart';
@@ -239,7 +240,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: Text(AppLocalizations.of(context)!.settings),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () async {
@@ -255,18 +256,18 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           if (Platform.isAndroid && _deviceAdminEnabled) ..._buildDeviceAdminWarning(),
           
           // === SLIDESHOW SETTINGS ===
-          _buildSectionHeader('Slideshow'),
+          _buildSectionHeader(AppLocalizations.of(context)!.sectionSlideshow),
           const SizedBox(height: 8),
           
           // Slide Duration
           _buildSliderSetting(
             icon: Icons.timer,
-            title: 'Slide Duration',
+            title: AppLocalizations.of(context)!.slideDuration,
             value: _slideDurationMinutes.toDouble(),
             min: 1,
             max: 15,
             divisions: 14,
-            unit: 'min',
+            unit: AppLocalizations.of(context)!.unitMinutes,
             onChanged: (value) {
               setState(() => _slideDurationMinutes = value.round());
             },
@@ -277,12 +278,12 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           // Transition Duration (0.5 - 5 seconds, 0.5s steps)
           _buildSliderSetting(
             icon: Icons.blur_on,
-            title: 'Transition Duration',
+            title: AppLocalizations.of(context)!.transitionDuration,
             value: _transitionDurationSeconds,
             min: 0.5,
             max: 5.0,
             divisions: 9,  // 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0
-            unit: 'sec',
+            unit: AppLocalizations.of(context)!.unitSeconds,
             formatValue: (v) => v.toStringAsFixed(1),
             onChanged: (value) {
               setState(() => _transitionDurationSeconds = value);
@@ -294,12 +295,12 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           const SizedBox(height: 16),
           
           // === CLOCK SETTINGS ===
-          _buildSectionHeader('Clock'),
+          _buildSectionHeader(AppLocalizations.of(context)!.sectionClock),
           const SizedBox(height: 8),
           
           SwitchListTile(
-            title: const Text('Show Clock'),
-            subtitle: const Text('Display time on slideshow'),
+            title: Text(AppLocalizations.of(context)!.showClock),
+            subtitle: Text(AppLocalizations.of(context)!.showClockSubtitle),
             secondary: const Icon(Icons.access_time),
             value: _showClock,
             onChanged: (value) {
@@ -319,12 +320,12 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           const SizedBox(height: 16),
           
           // === PHOTO INFO SETTINGS ===
-          _buildSectionHeader('Photo Information'),
+          _buildSectionHeader(AppLocalizations.of(context)!.sectionPhotoInfo),
           const SizedBox(height: 8),
           
           SwitchListTile(
-            title: const Text('Show Photo Info'),
-            subtitle: const Text('Display date and location on slideshow'),
+            title: Text(AppLocalizations.of(context)!.showPhotoInfo),
+            subtitle: Text(AppLocalizations.of(context)!.showPhotoInfoSubtitle),
             secondary: const Icon(Icons.info_outline),
             value: _showPhotoInfo,
             onChanged: (value) {
@@ -339,8 +340,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             _buildPhotoInfoSizeSelector(),
             const SizedBox(height: 16),
             SwitchListTile(
-              title: const Text('Use Script Font'),
-              subtitle: const Text('Display metadata in elegant handwritten style'),
+              title: Text(AppLocalizations.of(context)!.useScriptFont),
+              subtitle: Text(AppLocalizations.of(context)!.useScriptFontSubtitle),
               secondary: const Icon(Icons.font_download),
               value: _useScriptFontForMetadata,
               onChanged: (value) {
@@ -349,8 +350,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             ),
             const SizedBox(height: 16),
             SwitchListTile(
-              title: const Text('Resolve Location Names'),
-              subtitle: const Text('Use OpenStreetMap to show place names instead of coordinates'),
+              title: Text(AppLocalizations.of(context)!.resolveLocationNames),
+              subtitle: Text(AppLocalizations.of(context)!.resolveLocationNamesSubtitle),
               secondary: const Icon(Icons.location_on),
               value: _geocodingEnabled,
               onChanged: (value) {
@@ -358,10 +359,10 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
               },
             ),
             if (_geocodingEnabled)
-              const Padding(
+              Padding(
                 padding: EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
-                  'Uses Nominatim (OpenStreetMap). No API key required.',
+                  AppLocalizations.of(context)!.nominatimHint,
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
               ),
@@ -372,7 +373,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           const SizedBox(height: 16),
           
           // === SYNC SETTINGS ===
-          _buildSectionHeader('Photo Source'),
+          _buildSectionHeader(AppLocalizations.of(context)!.sectionPhotoSource),
           const SizedBox(height: 8),
           
           // Sync Type Selection (includes inline folder selector for local_folder)
@@ -395,8 +396,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             
             // Delete orphaned files checkbox
             CheckboxListTile(
-              title: const Text('Delete orphaned files'),
-              subtitle: const Text('Remove local files that are no longer on server'),
+              title: Text(AppLocalizations.of(context)!.deleteOrphanedFiles),
+              subtitle: Text(AppLocalizations.of(context)!.deleteOrphanedFilesSubtitle),
               value: _deleteOrphanedFiles,
               onChanged: (value) {
                 setState(() => _deleteOrphanedFiles = value ?? true);
@@ -415,12 +416,12 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           const SizedBox(height: 16),
           
           // === DISPLAY SCHEDULE SETTINGS ===
-          _buildSectionHeader('Display Schedule'),
+          _buildSectionHeader(AppLocalizations.of(context)!.sectionDisplaySchedule),
           const SizedBox(height: 8),
           
           SwitchListTile(
-            title: const Text('Day/Night Schedule'),
-            subtitle: const Text('Turn off display at night'),
+            title: Text(AppLocalizations.of(context)!.dayNightSchedule),
+            subtitle: Text(AppLocalizations.of(context)!.dayNightScheduleSubtitle),
             secondary: const Icon(Icons.nightlight_round),
             value: _scheduleEnabled,
             onChanged: (value) {
@@ -436,12 +437,12 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           
           // === ANDROID SETTINGS (only on Android) ===
           if (Platform.isAndroid) ...[
-            _buildSectionHeader('Android'),
+            _buildSectionHeader(AppLocalizations.of(context)!.sectionAndroid),
             const SizedBox(height: 8),
             
             SwitchListTile(
-              title: const Text('Start on Boot'),
-              subtitle: const Text('Automatically start app when device boots'),
+              title: Text(AppLocalizations.of(context)!.startOnBoot),
+              subtitle: Text(AppLocalizations.of(context)!.startOnBootSubtitle),
               secondary: const Icon(Icons.power_settings_new),
               value: _autostartOnBoot,
               onChanged: (value) {
@@ -452,8 +453,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             const SizedBox(height: 8),
             
             SwitchListTile(
-              title: const Text('Keep App Running'),
-              subtitle: const Text('Prevent app from being stopped on low memory'),
+              title: Text(AppLocalizations.of(context)!.keepAppRunning),
+              subtitle: Text(AppLocalizations.of(context)!.keepAppRunningSubtitle),
               secondary: const Icon(Icons.memory),
               value: _keepAliveEnabled,
               onChanged: (value) async {
@@ -468,8 +469,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                     if (!permissionGranted) {
                       if (mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Notification permission is required for Keep App Running'),
+                          SnackBar(
+                            content: Text(AppLocalizations.of(context)!.notificationPermissionRequired),
                             duration: Duration(seconds: 4),
                           ),
                         );
@@ -490,14 +491,14 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           // === ABOUT ===
           ListTile(
             leading: const Icon(Icons.info_outline),
-            title: const Text('About'),
-            subtitle: const Text('Open Photo Frame v1.0.0'),
+            title: Text(AppLocalizations.of(context)!.about),
+            subtitle: Text(AppLocalizations.of(context)!.aboutSubtitle('1.0.0')),
             onTap: () {
               showAboutDialog(
                 context: context,
                 applicationName: 'Open Photo Frame',
                 applicationVersion: '1.0.0',
-                applicationLegalese: '© 2024',
+                applicationLegalese: '© 2026 Michael Wyraz',
               );
             },
           ),
@@ -563,8 +564,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
         // On Android: "App Folder", on Desktop: "Local Folder"
         if (Platform.isAndroid) ...[
           RadioListTile<String>(
-            title: const Text('App Folder'),
-            subtitle: const Text('Photos stored in app folder'),
+            title: Text(AppLocalizations.of(context)!.appFolder),
+            subtitle: Text(AppLocalizations.of(context)!.appFolderSubtitle),
             value: 'app_folder',
             groupValue: _syncType,
             onChanged: (value) {
@@ -574,8 +575,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           if (_syncType == 'app_folder')
             _buildAppFolderInfo(),
           RadioListTile<String>(
-            title: const Text('Device Photos'),
-            subtitle: const Text('Show photos from your device'),
+            title: Text(AppLocalizations.of(context)!.devicePhotos),
+            subtitle: Text(AppLocalizations.of(context)!.devicePhotosSubtitle),
             value: 'device_photos',
             groupValue: _syncType,
             onChanged: (value) {
@@ -586,8 +587,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             _buildDevicePhotosSelector(),
         ] else ...[
           RadioListTile<String>(
-            title: const Text('Local Folder'),
-            subtitle: const Text('Use photos from a local folder'),
+            title: Text(AppLocalizations.of(context)!.localFolder),
+            subtitle: Text(AppLocalizations.of(context)!.localFolderSubtitle),
             value: 'local_folder',
             groupValue: _syncType,
             onChanged: (value) {
@@ -598,8 +599,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             _buildLocalFolderSelector(),
         ],
         RadioListTile<String>(
-          title: const Text('Nextcloud'),
-          subtitle: const Text('Sync from Nextcloud public share link'),
+          title: Text(AppLocalizations.of(context)!.nextcloud),
+          subtitle: Text(AppLocalizations.of(context)!.nextcloudSubtitle),
           value: 'nextcloud_link',
           groupValue: _syncType,
           onChanged: (value) {
@@ -634,7 +635,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  'Copy photos to this folder. They will be deleted when uninstalling the app.',
+                  AppLocalizations.of(context)!.appFolderWarning,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.error,
                   ),
@@ -655,7 +656,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (_isLoadingAlbums)
-            const Row(
+            Row(
               children: [
                 SizedBox(
                   width: 16,
@@ -663,7 +664,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                   child: CircularProgressIndicator(strokeWidth: 2),
                 ),
                 SizedBox(width: 8),
-                Text('Loading albums...'),
+                Text(AppLocalizations.of(context)!.loadingAlbums),
               ],
             )
           else if (_availableAlbums.isEmpty)
@@ -671,7 +672,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
               children: [
                 Expanded(
                   child: Text(
-                    'Tap to load device photo albums',
+                    AppLocalizations.of(context)!.tapToLoadAlbums,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
@@ -680,7 +681,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                 TextButton.icon(
                   onPressed: _loadDeviceAlbums,
                   icon: const Icon(Icons.refresh, size: 18),
-                  label: const Text('Load'),
+                  label: Text(AppLocalizations.of(context)!.load),
                   style: TextButton.styleFrom(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     minimumSize: Size.zero,
@@ -695,15 +696,15 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                 Expanded(
                   child: DropdownButtonFormField<String>(
                     value: _selectedAlbumId,
-                    decoration: const InputDecoration(
-                      labelText: 'Photo Album',
+                    decoration: InputDecoration(
+                      labelText: AppLocalizations.of(context)!.photoAlbum,
                       isDense: true,
                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                     ),
                     items: [
-                      const DropdownMenuItem<String>(
+                      DropdownMenuItem<String>(
                         value: null,
-                        child: Text('All Photos'),
+                        child: Text(AppLocalizations.of(context)!.allPhotos),
                       ),
                       ..._availableAlbums.map((album) => DropdownMenuItem<String>(
                         value: album.id,
@@ -720,7 +721,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                 IconButton(
                   onPressed: _loadDeviceAlbums,
                   icon: const Icon(Icons.refresh, size: 20),
-                  tooltip: 'Refresh albums',
+                  tooltip: AppLocalizations.of(context)!.refreshAlbums,
                   padding: EdgeInsets.zero,
                   constraints: const BoxConstraints(),
                 ),
@@ -739,7 +740,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
       if (!permission.isAuth) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Photo permission denied')),
+            SnackBar(content: Text(AppLocalizations.of(context)!.photoPermissionDenied)),
           );
         }
         return;
@@ -767,7 +768,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
       if (mounted) {
         setState(() => _isLoadingAlbums = false);
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error loading albums: $e')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.errorLoadingAlbums(e.toString()))),
         );
       }
     }
@@ -805,7 +806,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           TextButton.icon(
             onPressed: _pickFolder,
             icon: const Icon(Icons.folder_open, size: 18),
-            label: const Text('Change'),
+            label: Text(AppLocalizations.of(context)!.change),
             style: TextButton.styleFrom(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
               minimumSize: Size.zero,
@@ -823,7 +824,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                 minimumSize: Size.zero,
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              child: const Text('Reset'),
+              child: Text(AppLocalizations.of(context)!.reset),
             ),
           ],
         ],
@@ -832,7 +833,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   }
   
   String _getDefaultFolderPath() {
-    return _defaultFolderPath.isNotEmpty ? _defaultFolderPath : 'Loading...';
+    return _defaultFolderPath.isNotEmpty ? _defaultFolderPath : AppLocalizations.of(context)!.loading;
   }
   
   Future<void> _pickFolder() async {
@@ -849,7 +850,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to pick folder: $e')),
+          SnackBar(content: Text(AppLocalizations.of(context)!.failedToPickFolder(e.toString()))),
         );
       }
     }
@@ -863,9 +864,9 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
         children: [
           TextField(
             controller: _nextcloudUrlController,
-            decoration: const InputDecoration(
-              labelText: 'Nextcloud Public Share URL',
-              hintText: 'https://cloud.example.com/s/abc123',
+            decoration: InputDecoration(
+              labelText: AppLocalizations.of(context)!.nextcloudPublicShareUrl,
+              hintText: AppLocalizations.of(context)!.nextcloudUrlHint,
               prefixIcon: Icon(Icons.link),
               border: OutlineInputBorder(),
             ),
@@ -890,7 +891,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.wifi_find, size: 18),
-            label: Text(_isTestingConnection ? 'Testing...' : 'Test Connection'),
+            label: Text(_isTestingConnection ? AppLocalizations.of(context)!.testing : AppLocalizations.of(context)!.testConnection),
           ),
           if (_connectionTestResult != null) ...[
             const SizedBox(height: 4),
@@ -934,7 +935,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
       setState(() {
         _isTestingConnection = false;
         _connectionTestSuccess = error == null;
-        _connectionTestResult = error ?? 'Connection successful!';
+        _connectionTestResult = error ?? AppLocalizations.of(context)!.connectionSuccessful;
       });
     }
   }
@@ -942,8 +943,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   Widget _buildSyncIntervalSlider() {
     // Values: 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60
     final displayValue = _syncIntervalMinutes == 0 
-        ? 'Disabled' 
-        : '$_syncIntervalMinutes min';
+        ? AppLocalizations.of(context)!.disabled 
+        : '$_syncIntervalMinutes ${AppLocalizations.of(context)!.unitMinutes}';
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -952,7 +953,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           children: [
             const Icon(Icons.schedule, size: 20),
             const SizedBox(width: 12),
-            const Expanded(child: Text('Auto-Sync Interval')),
+            Expanded(child: Text(AppLocalizations.of(context)!.autoSyncInterval)),
             Text(
               displayValue,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
@@ -991,7 +992,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.sync),
-            label: Text(_isSyncing ? 'Syncing...' : 'Sync Now'),
+            label: Text(_isSyncing ? AppLocalizations.of(context)!.syncing : AppLocalizations.of(context)!.syncNow),
           ),
           if (_syncStatus != null) ...[
             const SizedBox(height: 8),
@@ -1014,25 +1015,27 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   Widget _buildLastSyncInfo() {
     final config = context.read<ConfigProvider>();
     final lastSync = config.lastSuccessfulSync;
+    final l10n = AppLocalizations.of(context)!;
     
     String text;
     if (lastSync == null) {
-      text = 'Never synced';
+      text = l10n.neverSynced;
     } else {
       final now = DateTime.now();
       final diff = now.difference(lastSync);
       
       if (diff.inMinutes < 1) {
-        text = 'Last sync: Just now';
+        text = l10n.lastSyncJustNow;
       } else if (diff.inMinutes < 60) {
-        text = 'Last sync: ${diff.inMinutes} min ago';
+        text = l10n.lastSyncMinutesAgo(diff.inMinutes);
       } else if (diff.inHours < 24) {
-        text = 'Last sync: ${diff.inHours} hours ago';
+        text = l10n.lastSyncHoursAgo(diff.inHours);
       } else {
         // Format as date
-        text = 'Last sync: ${lastSync.day}.${lastSync.month}.${lastSync.year} '
+        final dateStr = '${lastSync.day}.${lastSync.month}.${lastSync.year} '
                '${lastSync.hour.toString().padLeft(2, '0')}:'
                '${lastSync.minute.toString().padLeft(2, '0')}';
+        text = l10n.lastSyncDate(dateStr);
       }
     }
     
@@ -1055,7 +1058,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
         children: [
           const Icon(Icons.format_size, size: 20),
           const SizedBox(width: 12),
-          const Text('Size'),
+          Text(AppLocalizations.of(context)!.size),
           const Spacer(),
           SegmentedButton<String>(
             segments: const [
@@ -1083,7 +1086,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             children: [
               const Icon(Icons.grid_view, size: 20),
               const SizedBox(width: 12),
-              const Text('Position'),
+              Text(AppLocalizations.of(context)!.position),
             ],
           ),
           const SizedBox(height: 8),
@@ -1239,7 +1242,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Device Admin Active',
+                    AppLocalizations.of(context)!.deviceAdminActive,
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: Colors.orange.shade900,
@@ -1250,14 +1253,14 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             ),
             const SizedBox(height: 8),
             Text(
-              'To uninstall this app, you must first disable Device Admin permission in Android settings.',
+              AppLocalizations.of(context)!.deviceAdminUninstallWarning,
               style: TextStyle(color: Colors.orange.shade900, fontSize: 13),
             ),
             const SizedBox(height: 12),
             OutlinedButton.icon(
               onPressed: _openDeviceAdminSettings,
               icon: const Icon(Icons.settings, size: 18),
-              label: const Text('Open Device Admin Settings'),
+              label: Text(AppLocalizations.of(context)!.openDeviceAdminSettings),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.orange.shade700,
                 side: BorderSide(color: Colors.orange.shade300),
@@ -1277,7 +1280,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
       // Day start time
       ListTile(
         leading: const Icon(Icons.wb_sunny),
-        title: const Text('Day starts at'),
+        title: Text(AppLocalizations.of(context)!.dayStartsAt),
         trailing: TextButton(
           onPressed: () => _selectTime(isDay: true),
           child: Text(
@@ -1290,7 +1293,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
       // Night start time
       ListTile(
         leading: const Icon(Icons.nights_stay),
-        title: const Text('Night starts at'),
+        title: Text(AppLocalizations.of(context)!.nightStartsAt),
         trailing: TextButton(
           onPressed: () => _selectTime(isDay: false),
           child: Text(
@@ -1308,11 +1311,11 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
         const SizedBox(height: 8),
         
         SwitchListTile(
-          title: const Text('Native Screen Off'),
+          title: Text(AppLocalizations.of(context)!.nativeScreenOff),
           subtitle: Text(
             _deviceAdminEnabled
-                ? 'Use Device Admin to completely turn off screen'
-                : 'Requires Device Admin permission',
+                ? AppLocalizations.of(context)!.nativeScreenOffEnabledSubtitle
+                : AppLocalizations.of(context)!.nativeScreenOffDisabledSubtitle,
           ),
           secondary: const Icon(Icons.screen_lock_portrait),
           value: _useNativeScreenOff,
@@ -1329,16 +1332,15 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'Device Admin permission is required to fully turn off the screen. '
-                  'Without it, the display will only be dimmed.',
+                Text(
+                  AppLocalizations.of(context)!.deviceAdminExplanation,
                   style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton.icon(
                   onPressed: _requestDeviceAdmin,
                   icon: const Icon(Icons.admin_panel_settings, size: 18),
-                  label: const Text('Grant Device Admin'),
+                  label: Text(AppLocalizations.of(context)!.grantDeviceAdmin),
                 ),
               ],
             ),
@@ -1356,7 +1358,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                     const Icon(Icons.check_circle, size: 16, color: Colors.green),
                     const SizedBox(width: 8),
                     Text(
-                      'Device Admin enabled - screen will turn off completely',
+                      AppLocalizations.of(context)!.deviceAdminEnabled,
                       style: TextStyle(fontSize: 12, color: Colors.green[700]),
                     ),
                   ],
@@ -1369,8 +1371,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        'Important: Screen lock (PIN/Pattern/Password) must be disabled for automatic wake-up to work. '
-                        'Go to Settings → Security → Screen lock → None.',
+                        AppLocalizations.of(context)!.screenLockWarning,
                         style: TextStyle(fontSize: 12, color: Colors.orange[700]),
                       ),
                     ),
@@ -1422,7 +1423,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
         children: [
           const Icon(Icons.format_size, size: 20),
           const SizedBox(width: 12),
-          const Text('Size'),
+          Text(AppLocalizations.of(context)!.size),
           const Spacer(),
           SegmentedButton<String>(
             segments: const [
@@ -1450,7 +1451,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             children: [
               const Icon(Icons.grid_view, size: 20),
               const SizedBox(width: 12),
-              const Text('Position'),
+              Text(AppLocalizations.of(context)!.position),
             ],
           ),
           const SizedBox(height: 8),
@@ -1499,47 +1500,40 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
 
   /// Show explanation dialog for Keep App Running feature
   Future<bool> _showKeepAliveExplanation() async {
+    final l10n = AppLocalizations.of(context)!;
     return await showDialog<bool>(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return AlertDialog(
-          title: const Text('Keep App Running'),
-          content: const SingleChildScrollView(
+          title: Text(l10n.keepAliveDialogTitle),
+          content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'What does this do?',
+                  l10n.keepAliveWhatDoes,
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 8),
-                Text(
-                  'This feature keeps the photo frame app running continuously, even when the device is low on memory.',
-                ),
+                Text(l10n.keepAliveWhatDoesExplanation),
                 SizedBox(height: 16),
                 Text(
-                  'Why would I need this?',
+                  l10n.keepAliveWhyNeed,
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 8),
-                Text(
-                  'On older devices with limited RAM, Android may stop the app to free up memory. This prevents that by running the app as a foreground service.',
-                ),
+                Text(l10n.keepAliveWhyNeedExplanation),
                 SizedBox(height: 16),
                 Text(
-                  'What will happen?',
+                  l10n.keepAliveWhatHappens,
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 8),
-                Text(
-                  '• A small notification will appear in the status bar\n'
-                  '• The app will be less likely to be stopped by Android\n'
-                  '• On Android 13+, you\'ll need to grant notification permission',
-                ),
+                Text(l10n.keepAliveWhatHappensExplanation),
                 SizedBox(height: 16),
                 Text(
-                  'You can disable this at any time from the settings.',
+                  l10n.keepAliveDisableAnytime,
                   style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
                 ),
               ],
@@ -1547,12 +1541,12 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: Text(l10n.cancel),
             ),
             FilledButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Enable'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: Text(l10n.enable),
             ),
           ],
         );

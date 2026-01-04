@@ -1,0 +1,160 @@
+{
+  "@@locale": "de",
+  
+  "settings": "Einstellungen",
+  
+  "sectionSlideshow": "Diashow",
+  "slideDuration": "Anzeigedauer",
+  "transitionDuration": "Überblendzeit",
+  "unitMinutes": "Min",
+  "unitSeconds": "Sek",
+  
+  "sectionClock": "Uhr",
+  "showClock": "Uhr anzeigen",
+  "showClockSubtitle": "Uhrzeit auf der Diashow anzeigen",
+  "size": "Größe",
+  "position": "Position",
+  
+  "sectionPhotoInfo": "Foto-Informationen",
+  "showPhotoInfo": "Foto-Info anzeigen",
+  "showPhotoInfoSubtitle": "Datum und Ort auf der Diashow anzeigen",
+  "useScriptFont": "Schreibschrift verwenden",
+  "useScriptFontSubtitle": "Metadaten in eleganter Handschrift anzeigen",
+  "resolveLocationNames": "Ortsnamen auflösen",
+  "resolveLocationNamesSubtitle": "OpenStreetMap nutzen um Ortsnamen statt Koordinaten anzuzeigen",
+  "nominatimHint": "Verwendet Nominatim (OpenStreetMap). Kein API-Schlüssel erforderlich.",
+  
+  "sectionPhotoSource": "Fotoquelle",
+  "appFolder": "App-Ordner",
+  "appFolderSubtitle": "Fotos im App-Ordner gespeichert",
+  "appFolderWarning": "Kopiere Fotos in diesen Ordner. Sie werden beim Deinstallieren der App gelöscht.",
+  "devicePhotos": "Geräte-Fotos",
+  "devicePhotosSubtitle": "Fotos vom Gerät anzeigen",
+  "localFolder": "Lokaler Ordner",
+  "localFolderSubtitle": "Fotos aus einem lokalen Ordner verwenden",
+  "nextcloud": "Nextcloud",
+  "nextcloudSubtitle": "Von Nextcloud öffentlichem Link synchronisieren",
+  "loading": "Lädt...",
+  "loadingAlbums": "Alben werden geladen...",
+  "tapToLoadAlbums": "Tippen um Fotoalben zu laden",
+  "load": "Laden",
+  "photoAlbum": "Fotoalbum",
+  "allPhotos": "Alle Fotos",
+  "refreshAlbums": "Alben aktualisieren",
+  "change": "Ändern",
+  "reset": "Zurücksetzen",
+  "photoPermissionDenied": "Foto-Berechtigung verweigert",
+  "errorLoadingAlbums": "Fehler beim Laden der Alben: {error}",
+  "@errorLoadingAlbums": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "failedToPickFolder": "Ordnerauswahl fehlgeschlagen: {error}",
+  "@failedToPickFolder": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "selectPhotoFolder": "Foto-Ordner auswählen",
+  
+  "nextcloudPublicShareUrl": "Nextcloud öffentlicher Freigabe-Link",
+  "nextcloudUrlHint": "https://cloud.example.com/s/abc123",
+  "testConnection": "Verbindung testen",
+  "testing": "Teste...",
+  "connectionSuccessful": "Verbindung erfolgreich!",
+  
+  "autoSyncInterval": "Auto-Sync-Intervall",
+  "disabled": "Deaktiviert",
+  "deleteOrphanedFiles": "Verwaiste Dateien löschen",
+  "deleteOrphanedFilesSubtitle": "Lokale Dateien entfernen, die nicht mehr auf dem Server sind",
+  "syncNow": "Jetzt synchronisieren",
+  "syncing": "Synchronisiere...",
+  "syncCompletedSuccessfully": "Synchronisation erfolgreich abgeschlossen!",
+  "syncError": "Fehler: {error}",
+  "@syncError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "neverSynced": "Noch nie synchronisiert",
+  "lastSyncJustNow": "Letzte Sync: Gerade eben",
+  "lastSyncMinutesAgo": "Letzte Sync: vor {minutes} Min",
+  "@lastSyncMinutesAgo": {
+    "placeholders": {
+      "minutes": {
+        "type": "int"
+      }
+    }
+  },
+  "lastSyncHoursAgo": "Letzte Sync: vor {hours} Stunden",
+  "@lastSyncHoursAgo": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "lastSyncDate": "Letzte Sync: {date}",
+  "@lastSyncDate": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  
+  "sectionDisplaySchedule": "Anzeige-Zeitplan",
+  "dayNightSchedule": "Tag/Nacht-Zeitplan",
+  "dayNightScheduleSubtitle": "Display nachts ausschalten",
+  "dayStartsAt": "Tag beginnt um",
+  "nightStartsAt": "Nacht beginnt um",
+  "nativeScreenOff": "Natives Ausschalten",
+  "nativeScreenOffEnabledSubtitle": "Geräte-Admin verwenden um Bildschirm komplett auszuschalten",
+  "nativeScreenOffDisabledSubtitle": "Erfordert Geräte-Admin-Berechtigung",
+  "deviceAdminExplanation": "Die Geräte-Admin-Berechtigung wird benötigt, um den Bildschirm vollständig auszuschalten. Ohne sie wird das Display nur gedimmt.",
+  "grantDeviceAdmin": "Geräte-Admin gewähren",
+  "deviceAdminEnabled": "Geräte-Admin aktiviert - Bildschirm wird komplett ausgeschaltet",
+  "screenLockWarning": "Wichtig: Die Bildschirmsperre (PIN/Muster/Passwort) muss deaktiviert sein, damit das automatische Aufwachen funktioniert. Gehe zu Einstellungen → Sicherheit → Bildschirmsperre → Keine.",
+  
+  "deviceAdminActive": "Geräte-Admin aktiv",
+  "deviceAdminUninstallWarning": "Um diese App zu deinstallieren, muss zuerst die Geräte-Admin-Berechtigung in den Android-Einstellungen deaktiviert werden.",
+  "openDeviceAdminSettings": "Geräte-Admin-Einstellungen öffnen",
+  
+  "sectionAndroid": "Android",
+  "startOnBoot": "Bei Start öffnen",
+  "startOnBootSubtitle": "App automatisch beim Gerätestart öffnen",
+  "keepAppRunning": "App am Laufen halten",
+  "keepAppRunningSubtitle": "Verhindern, dass die App bei wenig Speicher beendet wird",
+  "notificationPermissionRequired": "Benachrichtigungs-Berechtigung wird für 'App am Laufen halten' benötigt",
+  
+  "keepAliveDialogTitle": "App am Laufen halten",
+  "keepAliveWhatDoes": "Was macht diese Funktion?",
+  "keepAliveWhatDoesExplanation": "Diese Funktion hält die Bilderrahmen-App dauerhaft am Laufen, auch wenn das Gerät wenig Arbeitsspeicher hat.",
+  "keepAliveWhyNeed": "Wofür brauche ich das?",
+  "keepAliveWhyNeedExplanation": "Auf älteren Geräten mit wenig RAM kann Android die App beenden, um Speicher freizugeben. Dies verhindert das, indem die App als Vordergrunddienst läuft.",
+  "keepAliveWhatHappens": "Was passiert dann?",
+  "keepAliveWhatHappensExplanation": "• Eine kleine Benachrichtigung erscheint in der Statusleiste\n• Die App wird weniger wahrscheinlich von Android beendet\n• Ab Android 13 musst du die Benachrichtigungs-Berechtigung erteilen",
+  "keepAliveDisableAnytime": "Du kannst dies jederzeit in den Einstellungen deaktivieren.",
+  "cancel": "Abbrechen",
+  "enable": "Aktivieren",
+  
+  "about": "Über",
+  "aboutSubtitle": "Open Photo Frame v{version}",
+  "@aboutSubtitle": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  
+  "noPhotosFound": "Keine Fotos gefunden",
+  "tapCenterToOpenSettings": "Tippe auf die Bildschirmmitte um Einstellungen zu öffnen"
+}
