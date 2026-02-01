@@ -194,40 +194,59 @@ class HybridPhotoRepository implements PhotoRepository {
         return;
       }
       
+      // Load selected album from config (persistence across restarts)
+      final sourceConfig = _config.getSourceConfig('device_photos');
+      _selectedAlbumId = sourceConfig['albumId'] as String?;
+      _log.fine("Loaded album selection from config: $_selectedAlbumId");
+      
       // Get the selected album or use all photos
       List<AssetEntity> assets;
       
+      // Common filter options for all album queries
+      final filterOption = FilterOptionGroup(
+        imageOption: const FilterOption(
+          sizeConstraint: SizeConstraint(ignoreSize: true),
+        ),
+        orders: [const OrderOption(type: OrderOptionType.createDate, asc: false)],
+      );
+      
       if (_selectedAlbumId != null) {
-        // Get specific album
-        final albums = await PhotoManager.getAssetPathList(type: RequestType.image);
-        final album = albums.firstWhere(
-          (a) => a.id == _selectedAlbumId,
-          orElse: () => albums.first,
-        );
-        final count = await album.assetCountAsync;
-        assets = await album.getAssetListRange(start: 0, end: count);
-      } else {
-        // Get all photos
+        // Get specific album - must use same filterOption for proper SQL generation
         final albums = await PhotoManager.getAssetPathList(
           type: RequestType.image,
-          filterOption: FilterOptionGroup(
-            imageOption: const FilterOption(
-              sizeConstraint: SizeConstraint(ignoreSize: true),
-            ),
-          ),
+          filterOption: filterOption,
         );
+        _log.fine("Available albums: ${albums.map((a) => '${a.name}(${a.id})').join(', ')}");
         
-        if (albums.isEmpty) {
-          _log.info("No photo albums found");
-          _photos = [];
-          _photosController.add(null);
-          return;
+        // Find the selected album, or null if not found
+        AssetPathEntity? album;
+        try {
+          album = albums.firstWhere((a) => a.id == _selectedAlbumId);
+          _log.fine("Found matching album: ${album.name}");
+        } catch (e) {
+          _log.warning("Selected album not found: $_selectedAlbumId, falling back to all photos");
+          album = null;
         }
         
-        // Use "Recent" or first album (contains all photos)
-        final allPhotosAlbum = albums.first;
-        final count = await allPhotosAlbum.assetCountAsync;
-        assets = await allPhotosAlbum.getAssetListRange(start: 0, end: count);
+        if (album != null) {
+          final count = await album.assetCountAsync;
+          _log.fine("Album '${album.name}' has $count photos");
+          if (count > 0) {
+            assets = await album.getAssetListRange(start: 0, end: count);
+          } else {
+            // Album is empty
+            _log.info("Selected album is empty");
+            _photos = [];
+            _photosController.add(null);
+            return;
+          }
+        } else {
+          // Album not found - fall through to get all photos
+          _selectedAlbumId = null;
+          assets = await _getAllPhotos();
+        }
+      } else {
+        assets = await _getAllPhotos();
       }
       
       _log.fine("Found ${assets.length} assets in MediaStore");
@@ -275,13 +294,36 @@ class HybridPhotoRepository implements PhotoRepository {
     }
   }
   
+  /// Helper to get all photos from MediaStore
+  Future<List<AssetEntity>> _getAllPhotos() async {
+    final albums = await PhotoManager.getAssetPathList(
+      type: RequestType.image,
+      filterOption: FilterOptionGroup(
+        imageOption: const FilterOption(
+          sizeConstraint: SizeConstraint(ignoreSize: true),
+        ),
+        orders: [const OrderOption(type: OrderOptionType.createDate, asc: false)],
+      ),
+    );
+    
+    if (albums.isEmpty) {
+      _log.info("No photo albums found");
+      return [];
+    }
+    
+    // Use "Recent" or first album (contains all photos)
+    final allPhotosAlbum = albums.first;
+    final count = await allPhotosAlbum.assetCountAsync;
+    return allPhotosAlbum.getAssetListRange(start: 0, end: count);
+  }
+  
   /// Set the album to scan (for Device Photos mode)
   void setSelectedAlbum(String? albumId) {
     _selectedAlbumId = albumId;
-    // Store in config for persistence
-    if (albumId != null) {
-      _config.setSourceConfig('device_photos', {'albumId': albumId});
-    }
+    // Store in config for persistence (including null for "all photos")
+    _config.setSourceConfig('device_photos', {'albumId': albumId});
+    // Trigger rescan with new album selection
+    _scanMediaStore();
   }
   
   /// Get available albums (for UI picker)

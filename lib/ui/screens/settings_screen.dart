@@ -126,6 +126,18 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     _originalNextcloudUrl = nextcloudConfig['url'] ?? '';
     _originalLocalFolderPath = _localFolderPath;
     
+    // Load saved album selection for device_photos mode
+    final devicePhotosConfig = config.getSourceConfig('device_photos');
+    _selectedAlbumId = devicePhotosConfig['albumId'] as String?;
+    
+    // If device_photos is active, auto-load albums (permission already granted)
+    if (_syncType == 'device_photos') {
+      // Use post-frame callback to avoid calling setState during build
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadDeviceAlbums();
+      });
+    }
+    
     // Load default folder path async
     _loadDefaultFolderPath();
   }
@@ -581,6 +593,10 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             groupValue: _syncType,
             onChanged: (value) {
               setState(() => _syncType = value!);
+              // Auto-load albums when switching to device_photos
+              if (_availableAlbums.isEmpty) {
+                _loadDeviceAlbums();
+              }
             },
           ),
           if (_syncType == 'device_photos')
