@@ -83,4 +83,9 @@ abstract class ConfigProvider extends ChangeNotifier {
   // Geocoding settings
   bool get geocodingEnabled; // Enable reverse geocoding for GPS coordinates
   set geocodingEnabled(bool value);
+  
+  // Screen orientation settings
+  // Values: 'auto', 'portraitUp', 'portraitDown', 'landscapeLeft', 'landscapeRight'
+  String get screenOrientation;
+  set screenOrientation(String value);
 }

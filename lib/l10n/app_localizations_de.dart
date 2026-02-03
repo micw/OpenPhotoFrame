@@ -326,4 +326,22 @@ class AppLocalizationsDe extends AppLocalizations {
   @override
   String get tapCenterToOpenSettings =>
       'Tippe auf die Bildschirmmitte um Einstellungen zu öffnen';
+
+  @override
+  String get screenOrientation => 'Bildschirmausrichtung';
+
+  @override
+  String get screenOrientationAuto => 'Automatisch (Sensor)';
+
+  @override
+  String get screenOrientationPortraitUp => 'Hochformat';
+
+  @override
+  String get screenOrientationPortraitDown => 'Hochformat (auf dem Kopf)';
+
+  @override
+  String get screenOrientationLandscapeLeft => 'Querformat (links)';
+
+  @override
+  String get screenOrientationLandscapeRight => 'Querformat (rechts)';
 }

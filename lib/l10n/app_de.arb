@@ -156,5 +156,12 @@
   },
   
   "noPhotosFound": "Keine Fotos gefunden",
-  "tapCenterToOpenSettings": "Tippe auf die Bildschirmmitte um Einstellungen zu öffnen"
+  "tapCenterToOpenSettings": "Tippe auf die Bildschirmmitte um Einstellungen zu öffnen",
+  
+  "screenOrientation": "Bildschirmausrichtung",
+  "screenOrientationAuto": "Automatisch (Sensor)",
+  "screenOrientationPortraitUp": "Hochformat",
+  "screenOrientationPortraitDown": "Hochformat (auf dem Kopf)",
+  "screenOrientationLandscapeLeft": "Querformat (links)",
+  "screenOrientationLandscapeRight": "Querformat (rechts)"
 }

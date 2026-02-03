@@ -287,4 +287,13 @@ class JsonConfigService extends ConfigProvider {
   set geocodingEnabled(bool value) {
     _config['geocoding_enabled'] = value;
   }
+  
+  // Screen orientation settings
+  @override
+  String get screenOrientation => _config['screen_orientation'] ?? 'auto';
+  
+  @override
+  set screenOrientation(String value) {
+    _config['screen_orientation'] = value;
+  }
 }

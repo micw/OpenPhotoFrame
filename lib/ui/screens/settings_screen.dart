@@ -53,6 +53,9 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   late bool _useNativeScreenOff;
   bool _deviceAdminEnabled = false;
   
+  // Screen orientation setting
+  late String _screenOrientation;
+  
   bool _isSyncing = false;
   String? _syncStatus;
   
@@ -85,6 +88,9 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
       overlays: [SystemUiOverlay.top, SystemUiOverlay.bottom],
     );
     
+    // Allow all orientations in settings for easier configuration
+    SystemChrome.setPreferredOrientations(DeviceOrientation.values);
+    
     final config = context.read<ConfigProvider>();
     _slideDurationMinutes = (config.slideDurationSeconds / 60).round().clamp(1, 15);
     _transitionDurationSeconds = (config.transitionDurationMs / 1000.0).clamp(0.5, 5.0);
@@ -112,6 +118,9 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     _dayStartTime = TimeOfDay(hour: config.dayStartHour, minute: config.dayStartMinute);
     _nightStartTime = TimeOfDay(hour: config.nightStartHour, minute: config.nightStartMinute);
     _useNativeScreenOff = config.useNativeScreenOff;
+    
+    // Screen orientation
+    _screenOrientation = config.screenOrientation;
     
     // Check Device Admin status
     _checkDeviceAdmin();
@@ -228,6 +237,9 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     config.nightStartMinute = _nightStartTime.minute;
     config.useNativeScreenOff = _useNativeScreenOff;
     
+    // Screen orientation
+    config.screenOrientation = _screenOrientation;
+    
     // Sync autostart setting to SharedPreferences for BootReceiver
     await AutostartService.setEnabled(_autostartOnBoot);
     
@@ -301,6 +313,11 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
               setState(() => _transitionDurationSeconds = value);
             },
           ),
+          
+          const SizedBox(height: 16),
+          
+          // Screen Orientation
+          _buildScreenOrientationSelector(),
           
           const SizedBox(height: 24),
           const Divider(),
@@ -1063,6 +1080,103 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           color: Colors.grey,
         ),
         textAlign: TextAlign.center,
+      ),
+    );
+  }
+  
+  Widget _buildScreenOrientationSelector() {
+    String getOrientationLabel(String value) {
+      switch (value) {
+        case 'auto':
+          return AppLocalizations.of(context)!.screenOrientationAuto;
+        case 'portraitUp':
+          return AppLocalizations.of(context)!.screenOrientationPortraitUp;
+        case 'portraitDown':
+          return AppLocalizations.of(context)!.screenOrientationPortraitDown;
+        case 'landscapeLeft':
+          return AppLocalizations.of(context)!.screenOrientationLandscapeLeft;
+        case 'landscapeRight':
+          return AppLocalizations.of(context)!.screenOrientationLandscapeRight;
+        default:
+          return AppLocalizations.of(context)!.screenOrientationAuto;
+      }
+    }
+    
+    return ListTile(
+      leading: const Icon(Icons.screen_rotation),
+      title: Text(AppLocalizations.of(context)!.screenOrientation),
+      subtitle: Text(getOrientationLabel(_screenOrientation)),
+      trailing: DropdownButton<String>(
+        value: _screenOrientation,
+        underline: const SizedBox(),
+        items: [
+          DropdownMenuItem(
+            value: 'auto',
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.screen_rotation, size: 20),
+                const SizedBox(width: 8),
+                Text(AppLocalizations.of(context)!.screenOrientationAuto),
+              ],
+            ),
+          ),
+          DropdownMenuItem(
+            value: 'portraitUp',
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.stay_current_portrait, size: 20),
+                const SizedBox(width: 8),
+                Text(AppLocalizations.of(context)!.screenOrientationPortraitUp),
+              ],
+            ),
+          ),
+          DropdownMenuItem(
+            value: 'portraitDown',
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Transform.rotate(
+                  angle: 3.14159, // 180 degrees
+                  child: const Icon(Icons.stay_current_portrait, size: 20),
+                ),
+                const SizedBox(width: 8),
+                Text(AppLocalizations.of(context)!.screenOrientationPortraitDown),
+              ],
+            ),
+          ),
+          DropdownMenuItem(
+            value: 'landscapeLeft',
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.stay_current_landscape, size: 20),
+                const SizedBox(width: 8),
+                Text(AppLocalizations.of(context)!.screenOrientationLandscapeLeft),
+              ],
+            ),
+          ),
+          DropdownMenuItem(
+            value: 'landscapeRight',
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Transform.flip(
+                  flipX: true,
+                  child: const Icon(Icons.stay_current_landscape, size: 20),
+                ),
+                const SizedBox(width: 8),
+                Text(AppLocalizations.of(context)!.screenOrientationLandscapeRight),
+              ],
+            ),
+          ),
+        ],
+        onChanged: (value) {
+          if (value != null) {
+            setState(() => _screenOrientation = value);
+          }
+        },
       ),
     );
   }

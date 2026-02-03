@@ -156,5 +156,12 @@
   },
   
   "noPhotosFound": "No photos found",
-  "tapCenterToOpenSettings": "Tap center of screen to open settings"
+  "tapCenterToOpenSettings": "Tap center of screen to open settings",
+  
+  "screenOrientation": "Screen Orientation",
+  "screenOrientationAuto": "Automatic (Sensor)",
+  "screenOrientationPortraitUp": "Portrait",
+  "screenOrientationPortraitDown": "Portrait (upside down)",
+  "screenOrientationLandscapeLeft": "Landscape (left)",
+  "screenOrientationLandscapeRight": "Landscape (right)"
 }

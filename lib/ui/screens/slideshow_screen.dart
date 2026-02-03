@@ -22,6 +22,23 @@ import 'settings_screen.dart';
 final _log = Logger('SlideshowScreen');
 final _geocodingService = GeocodingService();
 
+/// Convert screen orientation setting to DeviceOrientation list
+List<DeviceOrientation> _getDeviceOrientations(String orientation) {
+  switch (orientation) {
+    case 'portraitUp':
+      return [DeviceOrientation.portraitUp];
+    case 'portraitDown':
+      return [DeviceOrientation.portraitDown];
+    case 'landscapeLeft':
+      return [DeviceOrientation.landscapeLeft];
+    case 'landscapeRight':
+      return [DeviceOrientation.landscapeRight];
+    case 'auto':
+    default:
+      return DeviceOrientation.values; // All orientations
+  }
+}
+
 class SlideshowScreen extends StatefulWidget {
   const SlideshowScreen({super.key});
 
@@ -63,6 +80,10 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     super.initState();
     // Register lifecycle observer
     WidgetsBinding.instance.addObserver(this);
+    
+    // Apply configured screen orientation
+    final config = context.read<ConfigProvider>();
+    SystemChrome.setPreferredOrientations(_getDeviceOrientations(config.screenOrientation));
     
     // Keep screen on (Safe implementation for Linux/Dev)
     _enableWakelock();
@@ -351,6 +372,11 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     ).then((_) {
       // Restore immersive mode after returning from settings
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+      
+      // Re-apply configured screen orientation
+      final config = context.read<ConfigProvider>();
+      SystemChrome.setPreferredOrientations(_getDeviceOrientations(config.screenOrientation));
+      
       // Restart timer when returning from settings
       _startTimer();
     });

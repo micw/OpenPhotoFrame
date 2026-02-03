@@ -323,4 +323,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get tapCenterToOpenSettings => 'Tap center of screen to open settings';
+
+  @override
+  String get screenOrientation => 'Screen Orientation';
+
+  @override
+  String get screenOrientationAuto => 'Automatic (Sensor)';
+
+  @override
+  String get screenOrientationPortraitUp => 'Portrait';
+
+  @override
+  String get screenOrientationPortraitDown => 'Portrait (upside down)';
+
+  @override
+  String get screenOrientationLandscapeLeft => 'Landscape (left)';
+
+  @override
+  String get screenOrientationLandscapeRight => 'Landscape (right)';
 }

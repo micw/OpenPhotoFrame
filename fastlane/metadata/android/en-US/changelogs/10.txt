@@ -1,3 +1,6 @@
+New features:
+• Lock screen orientation: Choose between Auto, Portrait, Portrait (upside down), Landscape (left), or Landscape (right)
+
 Bug fixes:
 • Fixed: Album selection for "Device Photos" mode was not persisted correctly (Issue #2)
 • Fixed: Selected album now auto-loads when opening settings

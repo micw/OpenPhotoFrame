@@ -1,0 +1,7 @@
+Neue Funktionen:
+• Bildschirmausrichtung fixieren: Wähle zwischen Automatisch, Hochformat, Hochformat (auf dem Kopf), Querformat (links), oder Querformat (rechts)
+
+Fehlerbehebungen:
+• Behoben: Album-Auswahl für "Geräte-Fotos" wurde nicht korrekt gespeichert (Issue #2)
+• Behoben: Ausgewähltes Album wird jetzt automatisch beim Öffnen der Einstellungen geladen
+• Behoben: SQL-Fehler beim Laden von Fotos aus bestimmten Alben auf einigen Geräten

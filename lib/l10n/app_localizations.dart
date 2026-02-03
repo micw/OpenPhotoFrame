@@ -667,6 +667,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Tap center of screen to open settings'**
   String get tapCenterToOpenSettings;
+
+  /// No description provided for @screenOrientation.
+  ///
+  /// In en, this message translates to:
+  /// **'Screen Orientation'**
+  String get screenOrientation;
+
+  /// No description provided for @screenOrientationAuto.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic (Sensor)'**
+  String get screenOrientationAuto;
+
+  /// No description provided for @screenOrientationPortraitUp.
+  ///
+  /// In en, this message translates to:
+  /// **'Portrait'**
+  String get screenOrientationPortraitUp;
+
+  /// No description provided for @screenOrientationPortraitDown.
+  ///
+  /// In en, this message translates to:
+  /// **'Portrait (upside down)'**
+  String get screenOrientationPortraitDown;
+
+  /// No description provided for @screenOrientationLandscapeLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'Landscape (left)'**
+  String get screenOrientationLandscapeLeft;
+
+  /// No description provided for @screenOrientationLandscapeRight.
+  ///
+  /// In en, this message translates to:
+  /// **'Landscape (right)'**
+  String get screenOrientationLandscapeRight;
 }
 
 class _AppLocalizationsDelegate
