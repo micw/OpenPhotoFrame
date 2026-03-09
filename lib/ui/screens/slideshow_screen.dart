@@ -623,6 +623,7 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
               key: ValueKey(slide.photo.file.path),
               photo: slide.photo,
               screenSize: _screenSize!,
+              blurBorders: config.blurBorders,
             );
             
             // Use slide animation for manual navigation, fade for auto-advance

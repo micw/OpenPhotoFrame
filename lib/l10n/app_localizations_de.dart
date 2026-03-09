@@ -21,6 +21,13 @@ class AppLocalizationsDe extends AppLocalizations {
   String get transitionDuration => 'Überblendzeit';
 
   @override
+  String get blurBorders => 'Rand unscharf';
+
+  @override
+  String get blurBordersSubtitle =>
+      'Bild mit Unschärfe bis zum Bildschirmrand zeichnen';
+
+  @override
   String get unitMinutes => 'Min';
 
   @override

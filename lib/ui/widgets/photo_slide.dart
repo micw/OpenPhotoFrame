@@ -6,8 +6,9 @@ import '../../domain/models/photo_entry.dart';
 class PhotoSlide extends StatelessWidget {
   final PhotoEntry photo;
   final Size screenSize;
+  final bool blurBorders;
 
-  const PhotoSlide({super.key, required this.photo, required this.screenSize});
+  const PhotoSlide({super.key, required this.photo, required this.screenSize, required this.blurBorders});
 
   /// Creates a ResizeImage provider optimized for the screen size.
   /// This significantly speeds up decoding on slower devices.
@@ -27,23 +28,26 @@ class PhotoSlide extends StatelessWidget {
   Widget build(BuildContext context) {
     // Use ResizeImage for faster decoding - loads image at screen resolution
     final imageProvider = createOptimizedProvider(photo.file, screenSize);
-    
+
     return Stack(
       fit: StackFit.expand,
       children: [
-        // 1. Blurred Background
-        Image(
-          image: imageProvider,
-          fit: BoxFit.cover,
-          gaplessPlayback: true,
-        ),
-        BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            color: Colors.black.withOpacity(0.4),
+        if (blurBorders) ...[
+          Image(
+            image: imageProvider,
+            fit: BoxFit.cover,
+            gaplessPlayback: true,
           ),
-        ),
-        
+          BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+            color: Colors.black.withOpacity(0.4),
+            ),
+          ),
+        ] else
+          Container(
+            color: Colors.black,
+          ),
         // 2. Main Image
         Center(
           child: Image(
