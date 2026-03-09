@@ -113,7 +113,16 @@ class JsonConfigService extends ConfigProvider {
   set transitionDurationMs(int value) {
     _config['transition_duration_ms'] = value;
   }
-  
+
+  @override
+  bool get blurBorders => _config['blur_borders'] ?? false;
+
+  @override
+  set blurBorders(bool value) {
+    _config['blur_borders'] = value;
+  }
+
+
   // Sync settings
   @override
   int get syncIntervalMinutes => _config['sync_interval_minutes'] ?? 15;

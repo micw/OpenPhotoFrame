@@ -27,6 +27,7 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObserver {
   late int _slideDurationMinutes;
   late double _transitionDurationSeconds;
+  late bool _blurBorders;
   late String _syncType;
   late TextEditingController _nextcloudUrlController;
   late int _syncIntervalMinutes;
@@ -94,6 +95,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     final config = context.read<ConfigProvider>();
     _slideDurationMinutes = (config.slideDurationSeconds / 60).round().clamp(1, 15);
     _transitionDurationSeconds = (config.transitionDurationMs / 1000.0).clamp(0.5, 5.0);
+    _blurBorders = config.blurBorders;
     // Default sync type: app_folder on Android, local_folder on Desktop
     final defaultSyncType = Platform.isAndroid ? 'app_folder' : 'local_folder';
     _syncType = config.activeSourceType.isEmpty ? defaultSyncType : config.activeSourceType;
@@ -204,6 +206,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     
     config.slideDurationSeconds = _slideDurationMinutes * 60;
     config.transitionDurationMs = (_transitionDurationSeconds * 1000).round();
+    config.blurBorders = _blurBorders;
     // app_folder and local_folder both use empty activeSourceType (no sync)
     final isLocalMode = _syncType == 'local_folder' || _syncType == 'app_folder';
     config.activeSourceType = isLocalMode ? '' : _syncType;
@@ -314,6 +317,18 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             formatValue: (v) => v.toStringAsFixed(1),
             onChanged: (value) {
               setState(() => _transitionDurationSeconds = value);
+            },
+          ),
+
+          const SizedBox(height: 16),
+
+          SwitchListTile(
+            title: Text(AppLocalizations.of(context)!.blurBorders),
+            subtitle: Text(AppLocalizations.of(context)!.blurBordersSubtitle),
+            secondary: const Icon(Icons.blur_linear),
+            value: _blurBorders,
+            onChanged: (value) {
+              setState(() => _blurBorders = value);
             },
           ),
           

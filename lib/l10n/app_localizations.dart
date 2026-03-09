@@ -122,6 +122,18 @@ abstract class AppLocalizations {
   /// **'Transition Duration'**
   String get transitionDuration;
 
+  /// No description provided for @blurBorders.
+  ///
+  /// In en, this message translates to:
+  /// **'Blur Borders'**
+  String get blurBorders;
+
+  /// No description provided for @blurBordersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Extend image to screen size'**
+  String get blurBordersSubtitle;
+
   /// No description provided for @unitMinutes.
   ///
   /// In en, this message translates to:
