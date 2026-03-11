@@ -264,6 +264,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     // Display off in darkness settings
     config.darkScreenEnabled = _darkScreenEnabled;
     config.darkScreenThreshold = _darkScreenThreshold;
+    config.darkScreenOffset = _darkScreenOffset;
+
 
     // Screen orientation
     config.screenOrientation = _screenOrientation;
