@@ -59,7 +59,17 @@ abstract class ConfigProvider extends ChangeNotifier {
   
   int get nightStartMinute; // Minute when night mode starts (0-59), default 0
   set nightStartMinute(int value);
-  
+
+  // black Screen in Darkness
+  bool get darkScreenEnabled; // Enable dark screen in darkness
+  set darkScreenEnabled(bool value);
+
+  int get darkScreenThreshold; // Threshold for dark screen
+  set darkScreenThreshold(int value);
+
+  int get darkScreenOffset; // Offset for hysteresis
+  set darkScreenOffset(int value);
+
   bool get useNativeScreenOff; // Use Device Admin lockNow() for true screen off (Android)
   set useNativeScreenOff(bool value);
   

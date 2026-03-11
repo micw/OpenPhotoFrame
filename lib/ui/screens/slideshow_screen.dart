@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:light_sensor/light_sensor.dart';
 import '../../l10n/app_localizations.dart';
 import '../../domain/interfaces/config_provider.dart';
 import '../../domain/interfaces/display_controller.dart';
@@ -68,8 +69,15 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
   StreamSubscription? _scheduleSubscription;
   Timer? _scheduleTimer;
   bool _scheduleWasEnabled = false; // Track previous state for detecting changes
-  
+
   // Display off state for black overlay
+  bool _scheduleWantsDark = false;
+  bool _sensorWantsDark = false;
+  int _sensorValue = 1000;
+  StreamSubscription? _lightSubscription;
+  bool _darkScreenEnabled = false;
+  late int _darkThreshold;
+  late int _lightThreshold;
   bool _isDisplayOff = false;
   
   // Current photo location name (from geocoding)
@@ -92,6 +100,7 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initService();
       _initKeepAliveService();
+      _initLightSensor();
       // Schedule init is now handled reactively in build() via _updateDisplaySchedule()
     });
   }
@@ -252,21 +261,18 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
         ? displayController 
         : null;
     
+    _scheduleWantsDark = isNight;
+
     if (isNight && !_isDisplayOff) {
-      // Switch to night mode (screen off)
       print('📺 Switching to NIGHT mode (screen off), wake at $nextTransition');
-      
       if (config.useNativeScreenOff && nativeController != null) {
         await nativeController.sleepUntil(nextTransition);
       } else {
         await displayController.setMode(DisplayMode.off);
       }
       if (mounted) setState(() => _isDisplayOff = true);
-      
-    } else if (!isNight && _isDisplayOff) {
-      // Switch to day mode (screen on)
+    } else if (!isNight && _isDisplayOff && !_sensorWantsDark) {
       print('📺 Switching to DAY mode (screen on)');
-      
       if (nativeController != null) {
         await nativeController.wakeNow();
       } else {
@@ -365,20 +371,16 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
   }
 
   void _openSettings() {
-    _timer?.cancel(); // Stop auto-advance while in settings
-    
+    _timer?.cancel();
+
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const SettingsScreen()),
     ).then((_) {
-      // Restore immersive mode after returning from settings
       SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-      
-      // Re-apply configured screen orientation
       final config = context.read<ConfigProvider>();
       SystemChrome.setPreferredOrientations(_getDeviceOrientations(config.screenOrientation));
-      
-      // Restart timer when returning from settings
       _startTimer();
+      _initLightSensor();
     });
   }
 
@@ -551,6 +553,7 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     _timer?.cancel();
     _photosSubscription?.cancel();
     _scheduleSubscription?.cancel();
+    _lightSubscription?.cancel();
     _scheduleTimer?.cancel();
     for (var slide in _slides) {
       slide.controller.dispose();
@@ -561,6 +564,7 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
 
   @override
   Widget build(BuildContext context) {
+    _log.info("build");
     // Cache screen size for optimized image loading
     // IMPORTANT: Use physical pixels (multiply by devicePixelRatio)
     final mediaQuerySize = MediaQuery.of(context).size;
@@ -576,10 +580,16 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
       _screenSize = physicalSize;
     }
     final config = context.watch<ConfigProvider>();
-    
+
     // React to schedule config changes
     _updateDisplaySchedule(config);
-    
+
+    _darkScreenEnabled = config.darkScreenEnabled;
+    _darkThreshold = config.darkScreenThreshold;
+    _lightThreshold = _darkThreshold + config.darkScreenOffset;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _applyLightValue());
+
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -727,6 +737,49 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     
     // Listen to config changes to start/stop service
     config.addListener(_onConfigChanged);
+  }
+
+  Future<void> _initLightSensor() async {
+    final hasSensor = await LightSensor.hasSensor();
+    if (!hasSensor) return;
+    _lightSubscription = LightSensor.luxStream().listen((lux) {
+      if (mounted) {
+        setState(() {
+        _sensorValue = lux;
+        _applyLightValue();
+      });
+      }
+    });
+  }
+
+  void _applyLightValue(){
+    bool newValue;
+    if (_sensorValue < _darkThreshold) {
+      newValue = true;
+    } else if (_sensorValue > _lightThreshold) {
+      newValue = false;
+    } else {
+      return; // Hysterese-Zone – nichts tun
+    }
+
+    if (newValue != _sensorWantsDark) {
+      _sensorWantsDark = newValue;
+      _applyDisplayState();
+    }
+  }
+
+  void _applyDisplayState() {
+    final shouldBeOff = _scheduleWantsDark || (_sensorWantsDark && _darkScreenEnabled);
+
+    if (shouldBeOff == _isDisplayOff || !mounted) return;
+
+    if (shouldBeOff) {
+      final displayController = context.read<DisplayController>();
+      displayController.setMode(DisplayMode.off);
+      setState(() => _isDisplayOff = true);
+    } else {
+      _restoreDisplay();
+    }
   }
 
   /// Handle config changes for Keep Alive service

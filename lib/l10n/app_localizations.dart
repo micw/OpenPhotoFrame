@@ -530,6 +530,30 @@ abstract class AppLocalizations {
   /// **'Important: Screen lock (PIN/Pattern/Password) must be disabled for automatic wake-up to work. Go to Settings → Security → Screen lock → None.'**
   String get screenLockWarning;
 
+  /// No description provided for @darkScreenEnabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark screen in darkness'**
+  String get darkScreenEnabled;
+
+  /// No description provided for @darkScreenEnabledSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No picture displayed in darkness'**
+  String get darkScreenEnabledSubtitle;
+
+  /// No description provided for @darkScreenThreshold.
+  ///
+  /// In en, this message translates to:
+  /// **'Threshold for dark screen'**
+  String get darkScreenThreshold;
+
+  /// No description provided for @darkScreenOffset.
+  ///
+  /// In en, this message translates to:
+  /// **'Offset for screen on'**
+  String get darkScreenOffset;
+
   /// No description provided for @deviceAdminActive.
   ///
   /// In en, this message translates to:
