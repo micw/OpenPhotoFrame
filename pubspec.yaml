@@ -50,6 +50,7 @@ dependencies:
   exif_reader: ^4.0.2
   http: ^1.2.0
   intl: ^0.20.2
+  light_sensor: ^3.0.2
 
 dev_dependencies:
   flutter_test:
