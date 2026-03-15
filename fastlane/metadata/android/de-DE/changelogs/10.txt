@@ -1,7 +1,12 @@
 Neue Funktionen:
 • Bildschirmausrichtung fixieren: Wähle zwischen Automatisch, Hochformat, Hochformat (auf dem Kopf), Querformat (links), oder Querformat (rechts)
+• Rand unscharf: Fotos werden mit einem weichgezeichneten Hintergrund bis zum Bildschirmrand erweitert
+• Andere Nachtzeit für Freitage und Samstage
 
 Fehlerbehebungen:
 • Behoben: Album-Auswahl für "Geräte-Fotos" wurde nicht korrekt gespeichert (Issue #2)
+• Fotozugriff auf neueren Android-Versionen im Modus "Geräte-Fotos" behoben
 • Behoben: Ausgewähltes Album wird jetzt automatisch beim Öffnen der Einstellungen geladen
 • Behoben: SQL-Fehler beim Laden von Fotos aus bestimmten Alben auf einigen Geräten
+• Aufwachen und "App am Laufen halten" auf Geräten mit wenig Speicher verbessert
+• Mehrere Probleme bei der Einstellungsverarbeitung behoben
