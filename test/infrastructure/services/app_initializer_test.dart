@@ -45,6 +45,12 @@ class FakeConfigProvider extends ChangeNotifier implements ConfigProvider {
   set transitionDurationMs(int value) {}
 
   @override
+  bool get blurBorders => true;
+
+  @override
+  set blurBorders(bool value) {}
+
+  @override
   int get syncIntervalMinutes => 0;
 
   @override

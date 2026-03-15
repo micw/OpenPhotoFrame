@@ -115,7 +115,7 @@ class JsonConfigService extends ConfigProvider {
   }
 
   @override
-  bool get blurBorders => _config['blur_borders'] ?? false;
+  bool get blurBorders => _config['blur_borders'] ?? true;
 
   @override
   set blurBorders(bool value) {

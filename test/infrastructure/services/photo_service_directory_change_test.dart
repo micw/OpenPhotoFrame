@@ -84,6 +84,11 @@ class MockConfigProvider extends ChangeNotifier implements ConfigProvider {
   int get transitionDurationMs => 2000;
   @override
   set transitionDurationMs(int value) {}
+
+  @override
+  bool get blurBorders => true;
+  @override
+  set blurBorders(bool value) {}
   
   @override
   int get syncIntervalMinutes => _syncIntervalMinutes;
