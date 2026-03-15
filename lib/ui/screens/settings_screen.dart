@@ -243,6 +243,9 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     // Sync autostart setting to SharedPreferences for BootReceiver
     await AutostartService.setEnabled(_autostartOnBoot);
     
+    // Sync keep alive setting to SharedPreferences for WakeReceiver
+    await KeepAliveService.setEnabled(_keepAliveEnabled);
+    
     if (_syncType == 'nextcloud_link') {
       config.setSourceConfig('nextcloud_link', {
         'url': newNextcloudUrl,

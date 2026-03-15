@@ -1,9 +1,9 @@
 package io.github.micw.openphotoframe
 
-import android.app.ActivityManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.PowerManager
@@ -25,6 +25,10 @@ class WakeReceiver : BroadcastReceiver() {
 
     override fun onReceive(context: Context, intent: Intent) {
         Log.d(TAG, "Wake alarm received!")
+        
+        // Start KeepAliveService first if enabled
+        // This gives the app foreground priority before MainActivity starts
+        startKeepAliveServiceIfEnabled(context)
         
         val powerManager = context.getSystemService(Context.POWER_SERVICE) as PowerManager
         
@@ -105,21 +109,9 @@ class WakeReceiver : BroadcastReceiver() {
     }
     
     private fun isMainActivityRunning(context: Context): Boolean {
-        return try {
-            val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
-            @Suppress("DEPRECATION")
-            val tasks = am.getRunningTasks(1)
-            val isRunning = tasks.firstOrNull()?.topActivity?.let { 
-                it.packageName == context.packageName &&
-                it.className.contains("MainActivity")
-            } ?: false
-            
-            Log.d(TAG, "MainActivity running check: $isRunning")
-            isRunning
-        } catch (e: Exception) {
-            Log.e(TAG, "Error checking if MainActivity is running", e)
-            false
-        }
+        val isRunning = MainActivity.isRunning
+        Log.d(TAG, "MainActivity running check: $isRunning")
+        return isRunning
     }
     
     private fun releaseWakeLock(wakeLock: PowerManager.WakeLock) {
@@ -130,6 +122,35 @@ class WakeReceiver : BroadcastReceiver() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error releasing wake lock", e)
+        }
+    }
+    
+    /**
+     * Start KeepAliveService if enabled in user preferences.
+     * This ensures the app has foreground service priority during wake-up.
+     */
+    private fun startKeepAliveServiceIfEnabled(context: Context) {
+        try {
+            // Check if Keep Alive is enabled in SharedPreferences
+            val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+            val keepAliveEnabled = prefs.getBoolean("flutter.keep_alive_enabled", false)
+            
+            Log.d(TAG, "Keep Alive enabled: $keepAliveEnabled")
+            
+            if (keepAliveEnabled) {
+                Log.d(TAG, "Starting KeepAliveService before MainActivity")
+                val serviceIntent = Intent(context, KeepAliveService::class.java)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    context.startForegroundService(serviceIntent)
+                } else {
+                    context.startService(serviceIntent)
+                }
+            } else {
+                Log.d(TAG, "Keep Alive is disabled, skipping service start")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error checking/starting KeepAliveService", e)
+            // Don't fail the wake-up if service start fails
         }
     }
 }

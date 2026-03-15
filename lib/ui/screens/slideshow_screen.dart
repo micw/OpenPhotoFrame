@@ -11,6 +11,7 @@ import '../../domain/interfaces/display_controller.dart';
 import '../../domain/interfaces/metadata_provider.dart';
 import '../../infrastructure/services/photo_service.dart';
 import '../../infrastructure/services/native_display_controller.dart';
+import '../../infrastructure/services/native_screen_control_service.dart';
 import '../../infrastructure/services/geocoding_service.dart';
 import '../../infrastructure/services/keep_alive_service.dart';
 import '../../domain/models/photo_entry.dart';
@@ -273,6 +274,19 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
         await displayController.setMode(DisplayMode.normal);
       }
       if (mounted) setState(() => _isDisplayOff = false);
+    } else if (!isNight && !_isDisplayOff && NativeScreenControlService.isSupported) {
+      // Day mode and we think display is on - verify actual screen state.
+      // This handles the case where the app was restarted after a crash
+      // and _isDisplayOff is false (default) but the screen is actually off.
+      final screenOn = await NativeScreenControlService.isScreenOn();
+      if (!screenOn) {
+        print('📺 Screen is physically off but should be on (e.g. after crash) - waking up');
+        if (nativeController != null) {
+          await nativeController.wakeNow();
+        } else {
+          await displayController.setMode(DisplayMode.normal);
+        }
+      }
     }
   }
 

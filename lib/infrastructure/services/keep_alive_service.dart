@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 /// Service to manage the Keep Alive foreground service on Android.
 /// 
@@ -7,6 +8,24 @@ import 'package:flutter/services.dart';
 /// killer by running a foreground service with a persistent notification.
 class KeepAliveService {
   static const _channel = MethodChannel('io.github.micw.openphotoframe/keep_alive');
+  static const String _keepAliveKey = 'keep_alive_enabled';
+
+  /// Save keep alive setting to SharedPreferences.
+  /// This is read by the Android WakeReceiver during wake-up.
+  static Future<void> setEnabled(bool enabled) async {
+    if (!Platform.isAndroid) return;
+    
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_keepAliveKey, enabled);
+  }
+
+  /// Get current keep alive setting from SharedPreferences.
+  static Future<bool> isEnabled() async {
+    if (!Platform.isAndroid) return false;
+    
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_keepAliveKey) ?? false;
+  }
 
   /// Start the Keep Alive foreground service.
   /// 

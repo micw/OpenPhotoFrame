@@ -5,17 +5,21 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.util.Log
 import androidx.core.app.NotificationCompat
 
 /**
- * Foreground service that keeps the app running in the background.
+ * Foreground service that keeps the app running and auto-restarts MainActivity after crashes.
  * 
- * This prevents the app from being killed by Android's low memory killer,
- * especially on older devices with limited RAM.
+ * When the service is restarted by Android after an OOM kill, it checks if MainActivity
+ * is running and restarts it if necessary. This ensures the photo frame continues to work
+ * even after memory-related crashes.
  * 
  * The service shows a minimal notification that explains it's keeping the
  * photo frame running.
@@ -26,6 +30,7 @@ class KeepAliveService : Service() {
         private const val NOTIFICATION_ID = 1
         private const val CHANNEL_ID = "keep_alive_channel"
         private const val CHANNEL_NAME = "Photo Frame Keep Alive"
+        private const val RESTART_DELAY_MS = 2000L // Wait 2s before restarting MainActivity
     }
 
     override fun onCreate() {
@@ -40,6 +45,12 @@ class KeepAliveService : Service() {
         val notification = buildNotification()
         startForeground(NOTIFICATION_ID, notification)
         
+        // Check if MainActivity needs to be restarted after a delay
+        // This happens when the service is restarted by Android after an OOM kill
+        Handler(Looper.getMainLooper()).postDelayed({
+            ensureMainActivityIsRunning()
+        }, RESTART_DELAY_MS)
+        
         // START_STICKY ensures the service is restarted if killed by the system
         return START_STICKY
     }
@@ -52,6 +63,45 @@ class KeepAliveService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         Log.d(TAG, "Service destroyed")
+    }
+    
+    /**
+     * Ensures MainActivity is running. If not, starts it.
+     * This is called after the service restarts following an OOM kill.
+     */
+    private fun ensureMainActivityIsRunning() {
+        if (!isMainActivityRunning()) {
+            Log.w(TAG, "MainActivity is not running, restarting it")
+            startMainActivity()
+        } else {
+            Log.d(TAG, "MainActivity is already running")
+        }
+    }
+    
+    /**
+     * Checks if MainActivity is currently running.
+     */
+    private fun isMainActivityRunning(): Boolean {
+        val isRunning = MainActivity.isRunning
+        Log.d(TAG, "MainActivity running check: $isRunning")
+        return isRunning
+    }
+    
+    /**
+     * Starts MainActivity.
+     */
+    private fun startMainActivity() {
+        try {
+            val intent = Intent(this, MainActivity::class.java).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP)
+                addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            }
+            startActivity(intent)
+            Log.d(TAG, "MainActivity started successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start MainActivity", e)
+        }
     }
 
     private fun createNotificationChannel() {

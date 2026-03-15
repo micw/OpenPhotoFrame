@@ -6,6 +6,12 @@ import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 
 class MainActivity : FlutterActivity() {
+    companion object {
+        @Volatile
+        var isRunning = false
+            private set
+    }
+
     private lateinit var screenControlHandler: ScreenControlHandler
     private lateinit var keepAliveHandler: KeepAliveHandler
 
@@ -37,5 +43,15 @@ class MainActivity : FlutterActivity() {
         
         keepAliveHandler = KeepAliveHandler(this)
         keepAliveHandler.configureChannel(flutterEngine)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        isRunning = true
+    }
+
+    override fun onStop() {
+        super.onStop()
+        isRunning = false
     }
 }
