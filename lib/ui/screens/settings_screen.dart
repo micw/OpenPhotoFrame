@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../../l10n/app_localizations.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -67,6 +68,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   // Local folder path
   late String _localFolderPath;
   String _defaultFolderPath = '';
+  String _appVersion = '';
   
   // Device photos album selection (Android only)
   List<AssetPathEntity> _availableAlbums = [];
@@ -151,6 +153,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     
     // Load default folder path async
     _loadDefaultFolderPath();
+    _loadAppVersion();
   }
   
   Future<void> _loadDefaultFolderPath() async {
@@ -174,6 +177,17 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     if (mounted) {
       setState(() {
         _defaultFolderPath = dir.path;
+      });
+    }
+  }
+
+  Future<void> _loadAppVersion() async {
+    final packageInfo = await PackageInfo.fromPlatform();
+    final version = packageInfo.version.trim();
+
+    if (mounted) {
+      setState(() {
+        _appVersion = version;
       });
     }
   }
@@ -442,12 +456,13 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             const SizedBox(height: 8),
             
             // Delete orphaned files checkbox
-            CheckboxListTile(
+                SwitchListTile(
               title: Text(AppLocalizations.of(context)!.deleteOrphanedFiles),
               subtitle: Text(AppLocalizations.of(context)!.deleteOrphanedFilesSubtitle),
+                  secondary: const Icon(Icons.delete_sweep),
               value: _deleteOrphanedFiles,
               onChanged: (value) {
-                setState(() => _deleteOrphanedFiles = value ?? true);
+                    setState(() => _deleteOrphanedFiles = value);
               },
             ),
             
@@ -539,12 +554,16 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           ListTile(
             leading: const Icon(Icons.info_outline),
             title: Text(AppLocalizations.of(context)!.about),
-            subtitle: Text(AppLocalizations.of(context)!.aboutSubtitle('1.0.0')),
+            subtitle: Text(
+              AppLocalizations.of(context)!.aboutSubtitle(
+                _appVersion.isEmpty ? '...' : _appVersion,
+              ),
+            ),
             onTap: () {
               showAboutDialog(
                 context: context,
                 applicationName: 'Open Photo Frame',
-                applicationVersion: '1.0.0',
+                applicationVersion: _appVersion.isEmpty ? '...' : _appVersion,
                 applicationLegalese: '© 2026 Michael Wyraz',
               );
             },
