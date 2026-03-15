@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'l10n/app_localizations.dart';
-import 'package:intl/date_symbol_data_local.dart';
 import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
 
@@ -13,6 +12,7 @@ import 'domain/interfaces/sync_provider.dart';
 import 'domain/interfaces/storage_provider.dart';
 import 'domain/interfaces/photo_repository.dart';
 import 'domain/interfaces/display_controller.dart';
+import 'infrastructure/services/app_initializer.dart';
 import 'infrastructure/services/json_config_service.dart';
 import 'infrastructure/services/exif_metadata_provider.dart';
 import 'infrastructure/services/nextcloud_sync_service.dart';
@@ -36,12 +36,9 @@ void main() async {
   // Hide Status Bar and Navigation Bar (Immersive Mode)
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 
-  // Load Config
   final configService = JsonConfigService();
-  await configService.load();
-
-  // Initialize date formatting for all locales
-  await initializeDateFormatting();
+  final appInitializer = AppInitializer(configProvider: configService);
+  await appInitializer.initialize();
 
   runApp(OpenPhotoFrameApp(configProvider: configService));
 }
