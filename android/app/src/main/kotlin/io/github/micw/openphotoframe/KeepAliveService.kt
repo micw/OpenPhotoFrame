@@ -25,6 +25,14 @@ import androidx.core.app.NotificationCompat
  * photo frame running.
  */
 class KeepAliveService : Service() {
+    private val restartScheduler by lazy {
+        MainActivityRestartScheduler(
+            delayedExecutor = HandlerDelayedExecutor(Handler(Looper.getMainLooper())),
+            restartDelayMs = RESTART_DELAY_MS,
+            restartAction = { ensureMainActivityIsRunning() },
+        )
+    }
+
     companion object {
         private const val TAG = "KeepAliveService"
         private const val NOTIFICATION_ID = 1
@@ -47,9 +55,7 @@ class KeepAliveService : Service() {
         
         // Check if MainActivity needs to be restarted after a delay
         // This happens when the service is restarted by Android after an OOM kill
-        Handler(Looper.getMainLooper()).postDelayed({
-            ensureMainActivityIsRunning()
-        }, RESTART_DELAY_MS)
+        restartScheduler.schedule()
         
         // START_STICKY ensures the service is restarted if killed by the system
         return START_STICKY
@@ -62,6 +68,7 @@ class KeepAliveService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+        restartScheduler.cancel()
         Log.d(TAG, "Service destroyed")
     }
     

@@ -78,6 +78,10 @@ flutter {
     source = "../.."
 }
 
+dependencies {
+    testImplementation("junit:junit:4.13.2")
+}
+
 // ABI split: Create separate APKs for each CPU architecture (required for F-Droid)
 // Each ABI gets a unique version code suffix to ensure proper update handling
 val abiCodes = mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86_64" to 3)
