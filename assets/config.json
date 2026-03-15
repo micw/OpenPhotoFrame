@@ -1,6 +1,7 @@
 {
   "slide_duration_seconds": 600,
   "transition_duration_ms": 2000,
+  "blur_borders": true,
   "sync_interval_minutes": 15,
   "delete_orphaned_files": true,
   "active_source": "",

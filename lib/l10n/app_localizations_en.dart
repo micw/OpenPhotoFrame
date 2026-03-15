@@ -21,6 +21,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get transitionDuration => 'Transition Duration';
 
   @override
+  String get blurBorders => 'Blur Borders';
+
+  @override
+  String get blurBordersSubtitle => 'Extend image to screen size';
+
+  @override
   String get unitMinutes => 'min';
 
   @override
