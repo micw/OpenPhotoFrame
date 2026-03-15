@@ -500,6 +500,18 @@ abstract class AppLocalizations {
   /// **'Night starts at'**
   String get nightStartsAt;
 
+  /// No description provided for @differentNightTimeOnFridaysAndSaturdays.
+  ///
+  /// In en, this message translates to:
+  /// **'Different night time on Fridays and Saturdays'**
+  String get differentNightTimeOnFridaysAndSaturdays;
+
+  /// No description provided for @differentNightTimeFridaysAndSaturdays.
+  ///
+  /// In en, this message translates to:
+  /// **'Night starts on Fridays and Saturdays at'**
+  String get differentNightTimeFridaysAndSaturdays;
+
   /// No description provided for @nativeScreenOff.
   ///
   /// In en, this message translates to:

@@ -222,7 +222,7 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     
     final now = DateTime.now();
     final dayStart = DateTime(now.year, now.month, now.day, config.dayStartHour, config.dayStartMinute);
-    final nightStart = DateTime(now.year, now.month, now.day, config.nightStartHour, config.nightStartMinute);
+    final nightStart = _effectiveNightStartFor(now, config);
     
     // Determine if we're in day or night mode
     bool isNight;
@@ -288,6 +288,22 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
         }
       }
     }
+  }
+
+  DateTime _effectiveNightStartFor(DateTime date, ConfigProvider config) {
+    final hasFridaySaturdayOverride = config.fridaySaturdayNightStartHour != null &&
+        config.fridaySaturdayNightStartMinute != null;
+    final useFridaySaturdayOverride = hasFridaySaturdayOverride &&
+        (date.weekday == DateTime.friday || date.weekday == DateTime.saturday);
+
+    final hour = useFridaySaturdayOverride
+        ? config.fridaySaturdayNightStartHour!
+        : config.nightStartHour;
+    final minute = useFridaySaturdayOverride
+        ? config.fridaySaturdayNightStartMinute!
+        : config.nightStartMinute;
+
+    return DateTime(date.year, date.month, date.day, hour, minute);
   }
 
   Future<void> _enableWakelock() async {

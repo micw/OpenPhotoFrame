@@ -62,6 +62,12 @@ abstract class ConfigProvider extends ChangeNotifier {
   
   int get nightStartMinute; // Minute when night mode starts (0-59), default 0
   set nightStartMinute(int value);
+
+  int? get fridaySaturdayNightStartHour; // Null = use regular night start time
+  set fridaySaturdayNightStartHour(int? value);
+
+  int? get fridaySaturdayNightStartMinute; // Null = use regular night start time
+  set fridaySaturdayNightStartMinute(int? value);
   
   bool get useNativeScreenOff; // Use Device Admin lockNow() for true screen off (Android)
   set useNativeScreenOff(bool value);

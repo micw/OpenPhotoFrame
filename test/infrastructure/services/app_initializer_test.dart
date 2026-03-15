@@ -123,6 +123,18 @@ class FakeConfigProvider extends ChangeNotifier implements ConfigProvider {
   set nightStartMinute(int value) {}
 
   @override
+  int? get fridaySaturdayNightStartHour => null;
+
+  @override
+  set fridaySaturdayNightStartHour(int? value) {}
+
+  @override
+  int? get fridaySaturdayNightStartMinute => null;
+
+  @override
+  set fridaySaturdayNightStartMinute(int? value) {}
+
+  @override
   bool get useNativeScreenOff => false;
 
   @override

@@ -117,6 +117,8 @@
   "dayNightScheduleSubtitle": "Display nachts ausschalten",
   "dayStartsAt": "Tag beginnt um",
   "nightStartsAt": "Nacht beginnt um",
+  "differentNightTimeOnFridaysAndSaturdays": "Andere Nachtzeit freitags und samstags",
+  "differentNightTimeFridaysAndSaturdays": "Nacht beginnt freitags und samstags um",
   "nativeScreenOff": "Natives Ausschalten",
   "nativeScreenOffEnabledSubtitle": "Geräte-Admin verwenden um Bildschirm komplett auszuschalten",
   "nativeScreenOffDisabledSubtitle": "Erfordert Geräte-Admin-Berechtigung",

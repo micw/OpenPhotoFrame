@@ -26,6 +26,11 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObserver {
+  static const TimeOfDay _defaultFridaySaturdayNightStartTime = TimeOfDay(
+    hour: 23,
+    minute: 0,
+  );
+
   late int _slideDurationMinutes;
   late double _transitionDurationSeconds;
   late bool _blurBorders;
@@ -52,6 +57,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   late bool _scheduleEnabled;
   late TimeOfDay _dayStartTime;
   late TimeOfDay _nightStartTime;
+  TimeOfDay? _fridaySaturdayNightStartTime;
+  TimeOfDay? _lastFridaySaturdayNightStartTime;
   late bool _useNativeScreenOff;
   bool _deviceAdminEnabled = false;
   
@@ -121,6 +128,16 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     _scheduleEnabled = config.scheduleEnabled;
     _dayStartTime = TimeOfDay(hour: config.dayStartHour, minute: config.dayStartMinute);
     _nightStartTime = TimeOfDay(hour: config.nightStartHour, minute: config.nightStartMinute);
+    final fridaySaturdayNightStartHour = config.fridaySaturdayNightStartHour;
+    final fridaySaturdayNightStartMinute = config.fridaySaturdayNightStartMinute;
+    _fridaySaturdayNightStartTime =
+        fridaySaturdayNightStartHour != null && fridaySaturdayNightStartMinute != null
+        ? TimeOfDay(
+            hour: fridaySaturdayNightStartHour,
+            minute: fridaySaturdayNightStartMinute,
+          )
+        : null;
+    _lastFridaySaturdayNightStartTime = _fridaySaturdayNightStartTime;
     _useNativeScreenOff = config.useNativeScreenOff;
     
     // Screen orientation
@@ -252,6 +269,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     config.dayStartMinute = _dayStartTime.minute;
     config.nightStartHour = _nightStartTime.hour;
     config.nightStartMinute = _nightStartTime.minute;
+    config.fridaySaturdayNightStartHour = _fridaySaturdayNightStartTime?.hour;
+    config.fridaySaturdayNightStartMinute = _fridaySaturdayNightStartTime?.minute;
     config.useNativeScreenOff = _useNativeScreenOff;
     
     // Screen orientation
@@ -1469,6 +1488,30 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           ),
         ),
       ),
+
+      SwitchListTile(
+        title: Text(
+          AppLocalizations.of(context)!.differentNightTimeOnFridaysAndSaturdays,
+        ),
+        secondary: const Icon(Icons.schedule),
+        value: _fridaySaturdayNightStartTime != null,
+        onChanged: (_) => _toggleFridaySaturdayNightOverride(),
+      ),
+
+      if (_fridaySaturdayNightStartTime != null)
+        ListTile(
+          contentPadding: const EdgeInsets.only(left: 56, right: 16),
+          title: Text(
+            AppLocalizations.of(context)!.differentNightTimeFridaysAndSaturdays,
+          ),
+          trailing: TextButton(
+            onPressed: _selectFridaySaturdayNightTime,
+            child: Text(
+              _formatTimeOfDay(_fridaySaturdayNightStartTime!),
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+        ),
       
       const SizedBox(height: 8),
       
@@ -1554,7 +1597,46 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   
   Future<void> _selectTime({required bool isDay}) async {
     final initialTime = isDay ? _dayStartTime : _nightStartTime;
-    
+    final picked = await _pickTime(initialTime);
+
+    if (picked != null && mounted) {
+      setState(() {
+        if (isDay) {
+          _dayStartTime = picked;
+        } else {
+          _nightStartTime = picked;
+        }
+      });
+    }
+  }
+
+  void _toggleFridaySaturdayNightOverride() {
+    setState(() {
+      if (_fridaySaturdayNightStartTime == null) {
+        _fridaySaturdayNightStartTime =
+            _lastFridaySaturdayNightStartTime ??
+            _defaultFridaySaturdayNightStartTime;
+      } else {
+        _lastFridaySaturdayNightStartTime = _fridaySaturdayNightStartTime;
+        _fridaySaturdayNightStartTime = null;
+      }
+    });
+  }
+
+  Future<void> _selectFridaySaturdayNightTime() async {
+    final picked = await _pickTime(
+      _fridaySaturdayNightStartTime ?? _defaultFridaySaturdayNightStartTime,
+    );
+
+    if (picked != null && mounted) {
+      setState(() {
+        _fridaySaturdayNightStartTime = picked;
+        _lastFridaySaturdayNightStartTime = picked;
+      });
+    }
+  }
+
+  Future<TimeOfDay?> _pickTime(TimeOfDay initialTime) async {
     final picked = await showTimePicker(
       context: context,
       initialTime: initialTime,
@@ -1565,16 +1647,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
         );
       },
     );
-    
-    if (picked != null && mounted) {
-      setState(() {
-        if (isDay) {
-          _dayStartTime = picked;
-        } else {
-          _nightStartTime = picked;
-        }
-      });
-    }
+
+    return picked;
   }
   
   String _formatTimeOfDay(TimeOfDay time) {

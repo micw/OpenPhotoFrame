@@ -230,6 +230,14 @@ class AppLocalizationsDe extends AppLocalizations {
   String get nightStartsAt => 'Nacht beginnt um';
 
   @override
+  String get differentNightTimeOnFridaysAndSaturdays =>
+      'Andere Nachtzeit freitags und samstags';
+
+  @override
+  String get differentNightTimeFridaysAndSaturdays =>
+      'Nacht beginnt freitags und samstags um';
+
+  @override
   String get nativeScreenOff => 'Natives Ausschalten';
 
   @override

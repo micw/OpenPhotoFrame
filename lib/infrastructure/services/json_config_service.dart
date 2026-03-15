@@ -233,6 +233,30 @@ class JsonConfigService extends ConfigProvider {
   set nightStartMinute(int value) {
     _config['night_start_minute'] = value;
   }
+
+  @override
+  int? get fridaySaturdayNightStartHour => _config['friday_saturday_night_start_hour'];
+
+  @override
+  set fridaySaturdayNightStartHour(int? value) {
+    if (value == null) {
+      _config.remove('friday_saturday_night_start_hour');
+    } else {
+      _config['friday_saturday_night_start_hour'] = value;
+    }
+  }
+
+  @override
+  int? get fridaySaturdayNightStartMinute => _config['friday_saturday_night_start_minute'];
+
+  @override
+  set fridaySaturdayNightStartMinute(int? value) {
+    if (value == null) {
+      _config.remove('friday_saturday_night_start_minute');
+    } else {
+      _config['friday_saturday_night_start_minute'] = value;
+    }
+  }
   
   @override
   bool get useNativeScreenOff => _config['use_native_screen_off'] ?? false;

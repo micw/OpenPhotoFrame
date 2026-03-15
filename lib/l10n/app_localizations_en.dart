@@ -227,6 +227,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get nightStartsAt => 'Night starts at';
 
   @override
+  String get differentNightTimeOnFridaysAndSaturdays =>
+      'Different night time on Fridays and Saturdays';
+
+  @override
+  String get differentNightTimeFridaysAndSaturdays =>
+      'Night starts on Fridays and Saturdays at';
+
+  @override
   String get nativeScreenOff => 'Native Screen Off';
 
   @override

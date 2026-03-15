@@ -117,6 +117,8 @@
   "dayNightScheduleSubtitle": "Turn off display at night",
   "dayStartsAt": "Day starts at",
   "nightStartsAt": "Night starts at",
+  "differentNightTimeOnFridaysAndSaturdays": "Different night time on Fridays and Saturdays",
+  "differentNightTimeFridaysAndSaturdays": "Night starts on Fridays and Saturdays at",
   "nativeScreenOff": "Native Screen Off",
   "nativeScreenOffEnabledSubtitle": "Use Device Admin to completely turn off screen",
   "nativeScreenOffDisabledSubtitle": "Requires Device Admin permission",

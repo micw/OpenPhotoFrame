@@ -179,6 +179,16 @@ class MockConfigProvider extends ChangeNotifier implements ConfigProvider {
   int get nightStartMinute => 0;
   @override
   set nightStartMinute(int value) {}
+
+  @override
+  int? get fridaySaturdayNightStartHour => null;
+  @override
+  set fridaySaturdayNightStartHour(int? value) {}
+
+  @override
+  int? get fridaySaturdayNightStartMinute => null;
+  @override
+  set fridaySaturdayNightStartMinute(int? value) {}
   
   @override
   bool get useNativeScreenOff => false;
