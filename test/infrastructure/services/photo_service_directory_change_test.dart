@@ -104,6 +104,11 @@ class MockConfigProvider extends ChangeNotifier implements ConfigProvider {
   bool get autostartOnBoot => false;
   @override
   set autostartOnBoot(bool value) {}
+
+  @override
+  bool get keepAliveEnabled => false;
+  @override
+  set keepAliveEnabled(bool value) {}
   
   @override
   bool get showClock => false;
@@ -119,6 +124,31 @@ class MockConfigProvider extends ChangeNotifier implements ConfigProvider {
   String get clockPosition => 'bottomRight';
   @override
   set clockPosition(String value) {}
+
+  @override
+  bool get showPhotoInfo => false;
+  @override
+  set showPhotoInfo(bool value) {}
+
+  @override
+  String get photoInfoPosition => 'bottomRight';
+  @override
+  set photoInfoPosition(String value) {}
+
+  @override
+  String get photoInfoSize => 'large';
+  @override
+  set photoInfoSize(String value) {}
+
+  @override
+  bool get useScriptFontForMetadata => false;
+  @override
+  set useScriptFontForMetadata(bool value) {}
+
+  @override
+  bool get geocodingEnabled => false;
+  @override
+  set geocodingEnabled(bool value) {}
   
   @override
   bool get scheduleEnabled => false;
@@ -149,6 +179,11 @@ class MockConfigProvider extends ChangeNotifier implements ConfigProvider {
   bool get useNativeScreenOff => false;
   @override
   set useNativeScreenOff(bool value) {}
+
+  @override
+  String get screenOrientation => 'auto';
+  @override
+  set screenOrientation(String value) {}
 }
 
 class MockPlaylistStrategy implements PlaylistStrategy {
