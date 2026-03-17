@@ -261,6 +261,24 @@ class AppLocalizationsEn extends AppLocalizations {
       'Important: Screen lock (PIN/Pattern/Password) must be disabled for automatic wake-up to work. Go to Settings → Security → Screen lock → None.';
 
   @override
+  String get darkScreenEnabled => 'Dark screen in darkness';
+
+  @override
+  String get darkScreenEnabledSubtitle => 'No picture displayed in darkness';
+
+  @override
+  String get darkScreenThreshold => 'Threshold for dark screen';
+
+  @override
+  String get darkScreenOffset => 'Offset for screen on';
+
+  @override
+  String get darkScreenOnDelay => 'Delay for screen on';
+
+  @override
+  String get darkScreenOffDelay => 'Delay for screen off';
+
+  @override
   String get deviceAdminActive => 'Device Admin Active';
 
   @override

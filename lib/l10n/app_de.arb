@@ -126,7 +126,14 @@
   "grantDeviceAdmin": "Geräte-Admin gewähren",
   "deviceAdminEnabled": "Geräte-Admin aktiviert - Bildschirm wird komplett ausgeschaltet",
   "screenLockWarning": "Wichtig: Die Bildschirmsperre (PIN/Muster/Passwort) muss deaktiviert sein, damit das automatische Aufwachen funktioniert. Gehe zu Einstellungen → Sicherheit → Bildschirmsperre → Keine.",
-  
+
+  "darkScreenEnabled": "Bildschirm bei Dunkelheit dunkel schalten",
+  "darkScreenEnabledSubtitle": "Keine Anzeige in der Dunkelheit",
+  "darkScreenThreshold": "Schwellenwert für dunklen Bildschirm",
+  "darkScreenOffset": "Einschaltverzögerung (Helligkeit)",
+  "darkScreenOnDelay": "Einschaltverzögerung (Zeit)",
+  "darkScreenOffDelay": "Ausschaltverzögerung (Zeit)",
+
   "deviceAdminActive": "Geräte-Admin aktiv",
   "deviceAdminUninstallWarning": "Um diese App zu deinstallieren, muss zuerst die Geräte-Admin-Berechtigung in den Android-Einstellungen deaktiviert werden.",
   "openDeviceAdminSettings": "Geräte-Admin-Einstellungen öffnen",

@@ -126,7 +126,14 @@
   "grantDeviceAdmin": "Grant Device Admin",
   "deviceAdminEnabled": "Device Admin enabled - screen will turn off completely",
   "screenLockWarning": "Important: Screen lock (PIN/Pattern/Password) must be disabled for automatic wake-up to work. Go to Settings → Security → Screen lock → None.",
-  
+
+  "darkScreenEnabled": "Dark screen in darkness",
+  "darkScreenEnabledSubtitle": "No picture displayed in darkness",
+  "darkScreenThreshold": "Threshold for dark screen",
+  "darkScreenOffset": "Offset for screen on",
+  "darkScreenOnDelay": "Delay for screen on",
+  "darkScreenOffDelay": "Delay for screen off",
+
   "deviceAdminActive": "Device Admin Active",
   "deviceAdminUninstallWarning": "To uninstall this app, you must first disable Device Admin permission in Android settings.",
   "openDeviceAdminSettings": "Open Device Admin Settings",

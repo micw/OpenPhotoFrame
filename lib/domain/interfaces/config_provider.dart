@@ -71,7 +71,23 @@ abstract class ConfigProvider extends ChangeNotifier {
   
   bool get useNativeScreenOff; // Use Device Admin lockNow() for true screen off (Android)
   set useNativeScreenOff(bool value);
-  
+
+  // black Screen in Darkness
+  bool get darkScreenEnabled; // Enable dark screen in darkness
+  set darkScreenEnabled(bool value);
+
+  int get darkScreenThreshold; // Threshold for dark screen
+  set darkScreenThreshold(int value);
+
+  int get darkScreenOffset; // Offset for hysteresis
+  set darkScreenOffset(int value);
+
+  int get darkScreenOnDelay; // Delay for screen on on light
+  set darkScreenOnDelay(int value);
+
+  int get darkScreenOffDelay; // Delay for screen off on darkness
+  set darkScreenOffDelay(int value);
+
   // Custom photo directory (for "local folder" mode)
   String? get customPhotoPath; // null = use internal app folder, otherwise external path
   set customPhotoPath(String? value);
