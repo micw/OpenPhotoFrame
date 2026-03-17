@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:logging/logging.dart';
 import 'package:provider/provider.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
+import 'package:light_sensor/light_sensor.dart';
 import '../../l10n/app_localizations.dart';
 import '../../domain/interfaces/config_provider.dart';
 import '../../domain/interfaces/display_controller.dart';
@@ -69,10 +70,23 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
   StreamSubscription? _scheduleSubscription;
   Timer? _scheduleTimer;
   bool _scheduleWasEnabled = false; // Track previous state for detecting changes
-  
+
+  // Sensor based dark screen options
+  int _sensorValue = 1000;
+  StreamSubscription? _lightSubscription;
+  Timer? _lightUpdateTimer;
+  late bool _darkScreenEnabled;
+  late int _darkThreshold;
+  late int _lightThreshold;
+  late int _darkScreenOnDelay;
+  late int _darkScreenOffDelay;
+  Timer? _darkScreenHysteresisTimer;
+
   // Display off state for black overlay
+  bool _scheduleWantsDark = false;
+  bool _sensorWantsDark = false;
   bool _isDisplayOff = false;
-  
+
   // Current photo location name (from geocoding)
   String? _currentLocationName;
 
@@ -93,6 +107,7 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initService();
       _initKeepAliveService();
+      _initLightSensor();
       // Schedule init is now handled reactively in build() via _updateDisplaySchedule()
     });
   }
@@ -252,7 +267,9 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     final nativeController = displayController is NativeDisplayController 
         ? displayController 
         : null;
-    
+
+    _scheduleWantsDark = isNight;
+
     if (isNight && !_isDisplayOff) {
       // Switch to night mode (screen off)
       print('📺 Switching to NIGHT mode (screen off), wake at $nextTransition');
@@ -263,8 +280,8 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
         await displayController.setMode(DisplayMode.off);
       }
       if (mounted) setState(() => _isDisplayOff = true);
-      
-    } else if (!isNight && _isDisplayOff) {
+
+    } else if (!isNight && _isDisplayOff && !_sensorWantsDark) {
       // Switch to day mode (screen on)
       print('📺 Switching to DAY mode (screen on)');
       
@@ -396,7 +413,13 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
 
   void _openSettings() {
     _timer?.cancel(); // Stop auto-advance while in settings
-    
+
+    //Cancel dark screen timers and restore the screen
+    _darkScreenHysteresisTimer?.cancel();
+    _lightSubscription?.cancel();
+    _lightUpdateTimer?.cancel();
+    _restoreDisplay();
+
     Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const SettingsScreen()),
     ).then((_) {
@@ -409,6 +432,9 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
       
       // Restart timer when returning from settings
       _startTimer();
+      _updateLightSensor(config); // sensor config must be updated
+      _initLightSensor(); // restart sensor screen subscription and timers
+      _applyDisplayState(); // update the display state
     });
   }
 
@@ -582,6 +608,9 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     _photosSubscription?.cancel();
     _scheduleSubscription?.cancel();
     _scheduleTimer?.cancel();
+    _lightSubscription?.cancel();
+    _lightUpdateTimer?.cancel();
+    _darkScreenHysteresisTimer?.cancel();
     for (var slide in _slides) {
       slide.controller.dispose();
     }
@@ -609,7 +638,9 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     
     // React to schedule config changes
     _updateDisplaySchedule(config);
-    
+
+    _updateLightSensor(config);
+
     if (_isLoading) {
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
@@ -747,6 +778,72 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
         ],
       ),
     );
+  }
+
+  void _updateLightSensor(ConfigProvider config) {
+    _darkScreenEnabled = config.darkScreenEnabled;
+    _darkThreshold = config.darkScreenThreshold;
+    _lightThreshold = _darkThreshold + config.darkScreenOffset;
+    _darkScreenOnDelay = config.darkScreenOnDelay;
+    _darkScreenOffDelay = config.darkScreenOffDelay;
+  }
+
+  Future<void> _initLightSensor() async {
+    if(_darkScreenEnabled) {
+      final hasSensor = await LightSensor.hasSensor();
+      if (!hasSensor) return;
+
+      _lightSubscription = LightSensor.luxStream().listen((lux) {
+        _sensorValue = lux; // lightweight subscription
+      });
+
+      _lightUpdateTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+        _applyLightValue();
+      });
+    }
+  }
+
+  void _applyLightValue() {
+    // See what the desired value for _sensorWantsDark would be
+    bool newValue;
+    if (_sensorValue < _darkThreshold) {
+      newValue = true;
+    } else if (_sensorValue > _lightThreshold) {
+      newValue = false;
+    } else {
+      return; // Hysteresis - do nothing
+    }
+
+    // Is this different from the current state?
+    if (newValue != _sensorWantsDark) {
+      // If the timer is null assign a new timer
+      _darkScreenHysteresisTimer ??= Timer(Duration(
+          seconds: newValue ? _darkScreenOffDelay : _darkScreenOnDelay), () {
+        _darkScreenHysteresisTimer = null;
+        _sensorWantsDark = newValue;
+        _applyDisplayState();
+      });
+    } else {
+      // If this is the current state and there is a timer stop it
+      if(_darkScreenHysteresisTimer != null) {
+        _darkScreenHysteresisTimer?.cancel();
+        _darkScreenHysteresisTimer = null;
+      }
+    }
+  }
+
+  void _applyDisplayState() {
+    final shouldBeOff = _scheduleWantsDark || (_sensorWantsDark && _darkScreenEnabled);
+
+    if (shouldBeOff == _isDisplayOff || !mounted) return;
+
+    if (shouldBeOff) {
+      final displayController = context.read<DisplayController>();
+      displayController.setMode(DisplayMode.off);
+      setState(() => _isDisplayOff = true);
+    } else {
+      _restoreDisplay();
+    }
   }
 
   /// Initialize Keep Alive service based on config

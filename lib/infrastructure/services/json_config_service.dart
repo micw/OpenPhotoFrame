@@ -265,7 +265,48 @@ class JsonConfigService extends ConfigProvider {
   set useNativeScreenOff(bool value) {
     _config['use_native_screen_off'] = value;
   }
-  
+
+  // Dark screen in darkness settings
+  @override
+  bool get darkScreenEnabled => _config['dark_screen_enabled'] ?? false;
+
+  @override
+  set darkScreenEnabled(bool value) {
+    _config['dark_screen_enabled'] = value;
+  }
+
+  @override
+  int get darkScreenThreshold => _config['dark_screen_threshold'] ?? 10;
+
+  @override
+  set darkScreenThreshold(int value) {
+    _config['dark_screen_threshold'] = value;
+  }
+
+  @override
+  int get darkScreenOffset => _config['dark_screen_offset'] ?? 5;
+
+  @override
+  set darkScreenOffset(int value) {
+    _config['dark_screen_offset'] = value;
+  }
+
+  @override
+  int get darkScreenOnDelay => _config['dark_screen_on_delay'] ?? 30;
+
+  @override
+  set darkScreenOnDelay(int value) {
+    _config['dark_screen_on_delay'] = value;
+  }
+
+  @override
+  int get darkScreenOffDelay => _config['dark_screen_off_delay'] ?? 30;
+
+  @override
+  set darkScreenOffDelay(int value) {
+    _config['dark_screen_off_delay'] = value;
+  }
+
   // Custom photo directory (for "local folder" mode)
   @override
   String? get customPhotoPath => _config['custom_photo_path'];

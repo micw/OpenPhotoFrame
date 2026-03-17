@@ -264,6 +264,24 @@ class AppLocalizationsDe extends AppLocalizations {
       'Wichtig: Die Bildschirmsperre (PIN/Muster/Passwort) muss deaktiviert sein, damit das automatische Aufwachen funktioniert. Gehe zu Einstellungen → Sicherheit → Bildschirmsperre → Keine.';
 
   @override
+  String get darkScreenEnabled => 'Bildschirm bei Dunkelheit dunkel schalten';
+
+  @override
+  String get darkScreenEnabledSubtitle => 'Keine Anzeige in der Dunkelheit';
+
+  @override
+  String get darkScreenThreshold => 'Schwellenwert für dunklen Bildschirm';
+
+  @override
+  String get darkScreenOffset => 'Einschaltverzögerung (Helligkeit)';
+
+  @override
+  String get darkScreenOnDelay => 'Einschaltverzögerung (Zeit)';
+
+  @override
+  String get darkScreenOffDelay => 'Ausschaltverzögerung (Zeit)';
+
+  @override
   String get deviceAdminActive => 'Geräte-Admin aktiv';
 
   @override

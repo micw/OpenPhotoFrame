@@ -1,9 +1,11 @@
 import 'dart:io';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:light_sensor/light_sensor.dart';
 import '../../l10n/app_localizations.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:photo_manager/photo_manager.dart';
@@ -61,7 +63,16 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   TimeOfDay? _lastFridaySaturdayNightStartTime;
   late bool _useNativeScreenOff;
   bool _deviceAdminEnabled = false;
-  
+
+  // Auto dark screen settings
+  late bool _darkScreenEnabled;
+  late int _darkScreenThreshold;
+  late int _darkScreenOffset;
+  late int _darkScreenOnDelay;
+  late int _darkScreenOffDelay;
+  int? _currentLux;
+  StreamSubscription? _luxSubscription;
+
   // Screen orientation setting
   late String _screenOrientation;
   
@@ -139,7 +150,22 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
         : null;
     _lastFridaySaturdayNightStartTime = _fridaySaturdayNightStartTime;
     _useNativeScreenOff = config.useNativeScreenOff;
-    
+
+    // Sensor based dark screen settings
+    _darkScreenEnabled = config.darkScreenEnabled;
+    _darkScreenThreshold = config.darkScreenThreshold;
+    _darkScreenOffset = config.darkScreenOffset;
+    _darkScreenOnDelay = config.darkScreenOnDelay;
+    _darkScreenOffDelay = config.darkScreenOffDelay;
+
+    LightSensor.hasSensor().then((has) {
+      if (has) {
+        _luxSubscription = LightSensor.luxStream().listen((lux) {
+          if (mounted) setState(() => _currentLux = lux);
+        });
+      }
+    });
+
     // Screen orientation
     _screenOrientation = config.screenOrientation;
     
@@ -272,7 +298,14 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     config.fridaySaturdayNightStartHour = _fridaySaturdayNightStartTime?.hour;
     config.fridaySaturdayNightStartMinute = _fridaySaturdayNightStartTime?.minute;
     config.useNativeScreenOff = _useNativeScreenOff;
-    
+
+    // Display off in darkness settings
+    config.darkScreenEnabled = _darkScreenEnabled;
+    config.darkScreenThreshold = _darkScreenThreshold;
+    config.darkScreenOffset = _darkScreenOffset;
+    config.darkScreenOffDelay = _darkScreenOffDelay;
+    config.darkScreenOnDelay = _darkScreenOnDelay;
+
     // Screen orientation
     config.screenOrientation = _screenOrientation;
     
@@ -301,7 +334,14 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) {
+            _luxSubscription?.cancel();
+            _luxSubscription = null;
+          }
+        },
+        child: Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.settings),
         leading: IconButton(
@@ -518,6 +558,24 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           
           // === ANDROID SETTINGS (only on Android) ===
           if (Platform.isAndroid) ...[
+            const SizedBox(height: 8),
+
+            SwitchListTile(
+              title: Text(AppLocalizations.of(context)!.darkScreenEnabled),
+              subtitle: Text(AppLocalizations.of(context)!.darkScreenEnabledSubtitle),
+              secondary: const Icon(Icons.nightlight_round),
+              value: _darkScreenEnabled,
+              onChanged: (value) {
+                setState(() => _darkScreenEnabled = value);
+              },
+            ),
+
+            if (_darkScreenEnabled) _buildDarkScreenSettings(),
+
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 16),
+
             _buildSectionHeader(AppLocalizations.of(context)!.sectionAndroid),
             const SizedBox(height: 8),
             
@@ -589,6 +647,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           ),
         ],
       ),
+    ),
     );
   }
   
@@ -601,7 +660,116 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
       ),
     );
   }
-  
+
+  Widget _buildDarkScreenSettings() {
+    final displayValue = '${(_darkScreenThreshold)} lx';
+    return Padding(
+        padding: const EdgeInsets.only(left: 16, right: 16, bottom: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.mode_night_outlined, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text(AppLocalizations.of(context)!.darkScreenThreshold)),
+                if (_currentLux != null) ...[
+                  Icon(Icons.wb_sunny_outlined, size: 16, color: Colors.grey),
+                  const SizedBox(width: 4),
+                  Text(
+                    '${_currentLux!.round()} lx',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(color: Colors.grey),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                Text(
+                  displayValue,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            Slider(
+              value: _darkScreenThreshold.toDouble(),
+              min: 0,
+              max: 100,
+              divisions: 100,
+              onChanged: (value) {
+                setState(() => _darkScreenThreshold = value.round());
+              },
+            ),
+            Row(
+              children: [
+                const Icon(Icons.brightness_medium, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text(AppLocalizations.of(context)!.darkScreenOffset)),
+                Text(
+                  '${(_darkScreenOffset)} lx',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            Slider(
+              value: _darkScreenOffset.toDouble(),
+              min: 1,
+              max: 20,
+              divisions: 20,
+              onChanged: (value) {
+                setState(() => _darkScreenOffset = value.round());
+              },
+            ),
+            Row(
+              children: [
+                const Icon(Icons.timer_outlined, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text(AppLocalizations.of(context)!.darkScreenOnDelay)),
+                Text(
+                  '${(_darkScreenOnDelay)} s',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            Slider(
+              value: _darkScreenOnDelay.toDouble(),
+              min: 1,
+              max: 300,
+              divisions: 10,
+              onChanged: (value) {
+                setState(() => _darkScreenOnDelay = value.round());
+              },
+            ),
+            Row(
+              children: [
+                const Icon(Icons.timer_off_outlined, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text(AppLocalizations.of(context)!.darkScreenOffDelay)),
+                Text(
+                  '${(_darkScreenOffDelay)} s',
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            Slider(
+              value: _darkScreenOffDelay.toDouble(),
+              min: 1,
+              max: 300,
+              divisions: 10,
+              onChanged: (value) {
+                setState(() => _darkScreenOffDelay = value.round());
+              },
+            ),
+          ],
+        )
+    );
+  }
+
   Widget _buildSliderSetting({
     required IconData icon,
     required String title,
