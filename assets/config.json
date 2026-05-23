@@ -7,7 +7,9 @@
   "active_source": "",
   "sources": {
     "nextcloud_link": {
-      "url": ""
+      "url": "",
+      "folder_sync_mode": "all",
+      "selected_folders": []
     }
   }
 }

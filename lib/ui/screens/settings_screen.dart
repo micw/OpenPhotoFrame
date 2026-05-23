@@ -8,10 +8,10 @@ import '../../l10n/app_localizations.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:photo_manager/photo_manager.dart';
 import '../../domain/interfaces/config_provider.dart';
-import '../../domain/interfaces/storage_provider.dart';
 import '../../domain/interfaces/photo_repository.dart';
 import '../../infrastructure/repositories/hybrid_photo_repository.dart';
 import '../../infrastructure/services/photo_service.dart';
+import '../../infrastructure/services/nextcloud_source_config.dart';
 import '../../infrastructure/services/nextcloud_sync_service.dart';
 import '../../infrastructure/services/autostart_service.dart';
 import '../../infrastructure/services/native_screen_control_service.dart';
@@ -71,6 +71,12 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   bool _isTestingConnection = false;
   String? _connectionTestResult;
   bool? _connectionTestSuccess;
+
+  late NextcloudFolderSyncMode _nextcloudFolderSyncMode;
+  late Set<String> _selectedNextcloudFolders;
+  List<NextcloudFolder> _availableNextcloudFolders = [];
+  bool _isLoadingNextcloudFolders = false;
+  String? _nextcloudFolderLoadError;
   
   // Local folder path
   late String _localFolderPath;
@@ -84,8 +90,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   
   // Track original values to detect changes
   late String _originalSyncType;
-  late String _originalNextcloudUrl;
-  late String _originalLocalFolderPath;
+  late NextcloudSourceConfig _originalNextcloudSourceConfig;
   
   @override
   void initState() {
@@ -146,15 +151,18 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     // Check Device Admin status
     _checkDeviceAdmin();
     
-    final nextcloudConfig = config.getSourceConfig('nextcloud_link');
-    _nextcloudUrlController = TextEditingController(
-      text: nextcloudConfig['url'] ?? '',
+    final nextcloudConfig = NextcloudSourceConfig.fromMap(
+      config.getSourceConfig('nextcloud_link'),
     );
+    _nextcloudUrlController = TextEditingController(
+      text: nextcloudConfig.url,
+    );
+    _nextcloudFolderSyncMode = nextcloudConfig.folderSyncMode;
+    _selectedNextcloudFolders = {...nextcloudConfig.normalizedSelectedFolders};
     
     // Store original values for comparison on save
     _originalSyncType = _syncType;
-    _originalNextcloudUrl = nextcloudConfig['url'] ?? '';
-    _originalLocalFolderPath = _localFolderPath;
+    _originalNextcloudSourceConfig = nextcloudConfig;
     
     // Load saved album selection for device_photos mode
     final devicePhotosConfig = config.getSourceConfig('device_photos');
@@ -165,6 +173,14 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
       // Use post-frame callback to avoid calling setState during build
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _loadDeviceAlbums();
+      });
+    }
+
+    if (_syncType == 'nextcloud_link' &&
+        nextcloudConfig.url.isNotEmpty &&
+        _nextcloudFolderSyncMode == NextcloudFolderSyncMode.selectedFolders) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _loadAvailableNextcloudFolders();
       });
     }
     
@@ -229,8 +245,14 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     
     // Detect if sync configuration changed
     final newNextcloudUrl = _nextcloudUrlController.text.trim();
-    final syncConfigChanged = _syncType != _originalSyncType ||
-        (_syncType == 'nextcloud_link' && newNextcloudUrl != _originalNextcloudUrl);
+    final newNextcloudSourceConfig = _buildNextcloudSourceConfig(
+      url: newNextcloudUrl,
+    );
+    final nextcloudConfigChanged =
+      !_nextcloudConfigsEqual(newNextcloudSourceConfig, _originalNextcloudSourceConfig);
+    final syncConfigChanged =
+      _syncType != _originalSyncType ||
+      (_syncType == 'nextcloud_link' && nextcloudConfigChanged);
     final newSyncSourceConfigured = syncConfigChanged && 
         _syncType == 'nextcloud_link' && 
         newNextcloudUrl.isNotEmpty;
@@ -283,9 +305,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     await KeepAliveService.setEnabled(_keepAliveEnabled);
     
     if (_syncType == 'nextcloud_link') {
-      config.setSourceConfig('nextcloud_link', {
-        'url': newNextcloudUrl,
-      });
+      config.setSourceConfig('nextcloud_link', newNextcloudSourceConfig.toMap());
     }
     
     await config.save();
@@ -843,7 +863,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
       if (photoRepo is HybridPhotoRepository) {
         final config = context.read<ConfigProvider>();
         final sourceConfig = config.getSourceConfig('device_photos');
-        currentAlbumId = sourceConfig?['albumId'] as String?;
+        currentAlbumId = sourceConfig['albumId'] as String?;
       }
       
       if (mounted) {
@@ -946,6 +966,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   }
   
   Widget _buildNextcloudSettings() {
+    final localizations = AppLocalizations.of(context)!;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Column(
@@ -961,13 +983,12 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             ),
             keyboardType: TextInputType.url,
             onChanged: (_) {
-              // Reset test result when URL changes
-              if (_connectionTestResult != null) {
-                setState(() {
-                  _connectionTestResult = null;
-                  _connectionTestSuccess = null;
-                });
-              }
+              setState(() {
+                _connectionTestResult = null;
+                _connectionTestSuccess = null;
+                _availableNextcloudFolders = [];
+                _nextcloudFolderLoadError = null;
+              });
             },
           ),
           const SizedBox(height: 8),
@@ -1004,8 +1025,128 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
               ],
             ),
           ],
+          const SizedBox(height: 16),
+          RadioListTile<NextcloudFolderSyncMode>(
+            title: Text(localizations.syncAllNextcloudFolders),
+            subtitle: Text(localizations.syncAllNextcloudFoldersSubtitle),
+            value: NextcloudFolderSyncMode.all,
+            groupValue: _nextcloudFolderSyncMode,
+            onChanged: (value) {
+              if (value == null) {
+                return;
+              }
+              setState(() {
+                _nextcloudFolderSyncMode = value;
+              });
+            },
+          ),
+          RadioListTile<NextcloudFolderSyncMode>(
+            title: Text(localizations.syncSelectedNextcloudFolders),
+            subtitle: Text(localizations.syncSelectedNextcloudFoldersSubtitle),
+            value: NextcloudFolderSyncMode.selectedFolders,
+            groupValue: _nextcloudFolderSyncMode,
+            onChanged: (value) {
+              if (value == null) {
+                return;
+              }
+              setState(() {
+                _nextcloudFolderSyncMode = value;
+                if (_selectedNextcloudFolders.isEmpty) {
+                  _selectedNextcloudFolders = {''};
+                }
+              });
+            },
+          ),
+          if (_nextcloudFolderSyncMode == NextcloudFolderSyncMode.selectedFolders) ...[
+            const SizedBox(height: 8),
+            _buildNextcloudFolderSelection(),
+          ],
         ],
       ),
+    );
+  }
+
+  Widget _buildNextcloudFolderSelection() {
+    final localizations = AppLocalizations.of(context)!;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        OutlinedButton.icon(
+          onPressed: _isLoadingNextcloudFolders ? null : _loadAvailableNextcloudFolders,
+          icon: _isLoadingNextcloudFolders
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.folder_open, size: 18),
+          label: Text(
+            _isLoadingNextcloudFolders
+                ? localizations.loadingNextcloudFolders
+                : localizations.loadNextcloudFolders,
+          ),
+        ),
+        if (_nextcloudFolderLoadError != null) ...[
+          const SizedBox(height: 8),
+          Text(
+            localizations.nextcloudFoldersLoadError(_nextcloudFolderLoadError!),
+            style: const TextStyle(color: Colors.red, fontSize: 12),
+          ),
+        ],
+        if (_availableNextcloudFolders.isEmpty && !_isLoadingNextcloudFolders) ...[
+          const SizedBox(height: 8),
+          Text(
+            localizations.nextcloudFolderSelectionHint,
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ],
+        if (_availableNextcloudFolders.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          Text(
+            localizations.nextcloudFolderSelectionHint,
+            style: const TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            decoration: BoxDecoration(
+              border: Border.all(color: Theme.of(context).dividerColor),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: _availableNextcloudFolders.map((folder) {
+                final isSelected = _selectedNextcloudFolders.contains(folder.path);
+                final displayName = folder.path.isEmpty
+                    ? localizations.nextcloudShareRoot
+                    : folder.name;
+
+                return CheckboxListTile(
+                  value: isSelected,
+                  controlAffinity: ListTileControlAffinity.leading,
+                  dense: true,
+                  contentPadding: EdgeInsets.only(
+                    left: 12 + (folder.depth * 20),
+                    right: 12,
+                  ),
+                  title: Text(displayName),
+                  subtitle: folder.path.isEmpty
+                      ? Text(localizations.nextcloudShareRootSubtitle)
+                      : null,
+                  onChanged: (value) {
+                    setState(() {
+                      if (value ?? false) {
+                        _selectedNextcloudFolders.add(folder.path);
+                      } else {
+                        _selectedNextcloudFolders.remove(folder.path);
+                      }
+                    });
+                  },
+                );
+              }).toList(growable: false),
+            ),
+          ),
+        ],
+      ],
     );
   }
   
@@ -1027,6 +1168,85 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
         _connectionTestResult = error ?? AppLocalizations.of(context)!.connectionSuccessful;
       });
     }
+  }
+
+  Future<void> _loadAvailableNextcloudFolders() async {
+    final publicLink = _nextcloudUrlController.text.trim();
+    if (publicLink.isEmpty) {
+      setState(() {
+        _nextcloudFolderLoadError = 'URL is empty';
+        _availableNextcloudFolders = [];
+      });
+      return;
+    }
+
+    setState(() {
+      _isLoadingNextcloudFolders = true;
+      _nextcloudFolderLoadError = null;
+    });
+
+    try {
+      final folders = await NextcloudSyncService.listAvailableFolders(publicLink);
+      final availablePaths = folders.map((folder) => folder.path).toSet();
+
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _availableNextcloudFolders = folders;
+        _selectedNextcloudFolders = _selectedNextcloudFolders
+            .where(availablePaths.contains)
+            .toSet();
+      });
+    } catch (e) {
+      if (!mounted) {
+        return;
+      }
+
+      setState(() {
+        _nextcloudFolderLoadError = e.toString();
+        _availableNextcloudFolders = [];
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingNextcloudFolders = false;
+        });
+      }
+    }
+  }
+
+  NextcloudSourceConfig _buildNextcloudSourceConfig({required String url}) {
+    return NextcloudSourceConfig(
+      url: url,
+      folderSyncMode: _nextcloudFolderSyncMode,
+      selectedFolders: _selectedNextcloudFolders.toList()..sort(),
+    );
+  }
+
+  bool _nextcloudConfigsEqual(
+    NextcloudSourceConfig left,
+    NextcloudSourceConfig right,
+  ) {
+    final leftFolders = left.normalizedSelectedFolders.toList()..sort();
+    final rightFolders = right.normalizedSelectedFolders.toList()..sort();
+
+    if (left.url != right.url || left.folderSyncMode != right.folderSyncMode) {
+      return false;
+    }
+
+    if (leftFolders.length != rightFolders.length) {
+      return false;
+    }
+
+    for (var index = 0; index < leftFolders.length; index++) {
+      if (leftFolders[index] != rightFolders[index]) {
+        return false;
+      }
+    }
+
+    return true;
   }
   
   Widget _buildSyncIntervalSlider() {
@@ -1364,13 +1584,13 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
       
       if (mounted) {
         setState(() {
-          _syncStatus = 'Sync completed successfully!';
+          _syncStatus = AppLocalizations.of(context)!.syncCompletedSuccessfully;
         });
       }
     } catch (e) {
       if (mounted) {
         setState(() {
-          _syncStatus = 'Error: $e';
+          _syncStatus = AppLocalizations.of(context)!.syncError(e.toString());
         });
       }
     } finally {

@@ -67,6 +67,20 @@ void main() {
     expect(repository.photos.first.file.path, file.path);
   });
 
+  test('initialize scans nested photos recursively', () async {
+    // Arrange
+    final nestedFile = File('${tempDir.path}/nested/album/test.jpg');
+    await nestedFile.parent.create(recursive: true);
+    await nestedFile.writeAsString('nested image');
+
+    // Act
+    await repository.initialize();
+
+    // Assert
+    expect(repository.photos.length, 1);
+    expect(repository.photos.first.file.path, nestedFile.path);
+  });
+
   test('detects new files via watcher', () async {
     // Arrange
     await repository.initialize();
@@ -74,6 +88,24 @@ void main() {
 
     // Act
     final file = File('${tempDir.path}/new.jpg');
+    await file.create();
+
+    // Wait for watcher (it's async)
+    await Future.delayed(const Duration(seconds: 1));
+
+    // Assert
+    expect(repository.photos.length, 1);
+    expect(repository.photos.first.file.path, file.path);
+  });
+
+  test('detects nested files via recursive watcher', () async {
+    // Arrange
+    await repository.initialize();
+    expect(repository.photos.length, 0);
+
+    // Act
+    final file = File('${tempDir.path}/nested/new.jpg');
+    await file.parent.create(recursive: true);
     await file.create();
 
     // Wait for watcher (it's async)
@@ -116,5 +148,21 @@ void main() {
     // Assert
     expect(repository.photos.length, 1);
     expect(repository.photos.first.file.path, jpgFile.path);
+  });
+
+  test('ignores nested .part files', () async {
+    // Arrange
+    await repository.initialize();
+
+    // Act
+    final file = File('${tempDir.path}/nested/download.part');
+    await file.parent.create(recursive: true);
+    await file.create();
+
+    // Wait for watcher
+    await Future.delayed(const Duration(seconds: 1));
+
+    // Assert
+    expect(repository.photos.length, 0);
   });
 }

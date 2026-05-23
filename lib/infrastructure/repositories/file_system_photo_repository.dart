@@ -55,7 +55,10 @@ class FileSystemPhotoRepository implements PhotoRepository {
   void _setupFileWatcher() async {
     try {
       final localDir = await _storageProvider.getPhotoDirectory();
-      _dirWatcher = localDir.watch(events: FileSystemEvent.all).listen((event) {
+      _dirWatcher = localDir.watch(
+        events: FileSystemEvent.all,
+        recursive: true,
+      ).listen((event) {
         bool shouldScan = false;
         
         if (event is FileSystemMoveEvent) {
@@ -98,7 +101,11 @@ class FileSystemPhotoRepository implements PhotoRepository {
         return;
       }
 
-      final files = localDir.listSync().whereType<File>();
+      final files = localDir
+          .listSync(recursive: true, followLinks: false)
+          .whereType<File>()
+          .toList()
+        ..sort((left, right) => left.path.compareTo(right.path));
       final newPhotos = <PhotoEntry>[];
 
       for (var file in files) {

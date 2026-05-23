@@ -69,6 +69,23 @@
   "testConnection": "Verbindung testen",
   "testing": "Teste...",
   "connectionSuccessful": "Verbindung erfolgreich!",
+  "syncAllNextcloudFolders": "Alle Ordner",
+  "syncAllNextcloudFoldersSubtitle": "Bilder aus dem Freigabe-Root und allen Unterordnern synchronisieren",
+  "syncSelectedNextcloudFolders": "Ausgewählte Ordner",
+  "syncSelectedNextcloudFoldersSubtitle": "Wähle die Ordner, deren direkte Bilder verwendet werden sollen",
+  "loadNextcloudFolders": "Ordner laden",
+  "loadingNextcloudFolders": "Lade Ordner...",
+  "nextcloudFolderSelectionHint": "Wähle den Freigabe-Root und alle Unterordner aus, die enthalten sein sollen.",
+  "nextcloudShareRoot": "Freigabe-Root",
+  "nextcloudShareRootSubtitle": "Bilder direkt im freigegebenen Root-Ordner",
+  "nextcloudFoldersLoadError": "Fehler beim Laden der Ordner: {error}",
+  "@nextcloudFoldersLoadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   
   "autoSyncInterval": "Auto-Sync-Intervall",
   "disabled": "Deaktiviert",

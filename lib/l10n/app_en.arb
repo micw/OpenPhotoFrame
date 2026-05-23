@@ -69,6 +69,23 @@
   "testConnection": "Test Connection",
   "testing": "Testing...",
   "connectionSuccessful": "Connection successful!",
+  "syncAllNextcloudFolders": "All folders",
+  "syncAllNextcloudFoldersSubtitle": "Sync images from the share root and every subfolder",
+  "syncSelectedNextcloudFolders": "Selected folders",
+  "syncSelectedNextcloudFoldersSubtitle": "Choose the folders whose direct images should be used",
+  "loadNextcloudFolders": "Load folders",
+  "loadingNextcloudFolders": "Loading folders...",
+  "nextcloudFolderSelectionHint": "Select the share root and any subfolders you want to include.",
+  "nextcloudShareRoot": "Share root",
+  "nextcloudShareRootSubtitle": "Images directly in the shared root folder",
+  "nextcloudFoldersLoadError": "Error loading folders: {error}",
+  "@nextcloudFoldersLoadError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
   
   "autoSyncInterval": "Auto-Sync Interval",
   "disabled": "Disabled",

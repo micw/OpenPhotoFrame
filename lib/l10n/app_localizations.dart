@@ -392,6 +392,66 @@ abstract class AppLocalizations {
   /// **'Connection successful!'**
   String get connectionSuccessful;
 
+  /// No description provided for @syncAllNextcloudFolders.
+  ///
+  /// In en, this message translates to:
+  /// **'All folders'**
+  String get syncAllNextcloudFolders;
+
+  /// No description provided for @syncAllNextcloudFoldersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync images from the share root and every subfolder'**
+  String get syncAllNextcloudFoldersSubtitle;
+
+  /// No description provided for @syncSelectedNextcloudFolders.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected folders'**
+  String get syncSelectedNextcloudFolders;
+
+  /// No description provided for @syncSelectedNextcloudFoldersSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the folders whose direct images should be used'**
+  String get syncSelectedNextcloudFoldersSubtitle;
+
+  /// No description provided for @loadNextcloudFolders.
+  ///
+  /// In en, this message translates to:
+  /// **'Load folders'**
+  String get loadNextcloudFolders;
+
+  /// No description provided for @loadingNextcloudFolders.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading folders...'**
+  String get loadingNextcloudFolders;
+
+  /// No description provided for @nextcloudFolderSelectionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the share root and any subfolders you want to include.'**
+  String get nextcloudFolderSelectionHint;
+
+  /// No description provided for @nextcloudShareRoot.
+  ///
+  /// In en, this message translates to:
+  /// **'Share root'**
+  String get nextcloudShareRoot;
+
+  /// No description provided for @nextcloudShareRootSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Images directly in the shared root folder'**
+  String get nextcloudShareRootSubtitle;
+
+  /// No description provided for @nextcloudFoldersLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error loading folders: {error}'**
+  String nextcloudFoldersLoadError(String error);
+
   /// No description provided for @autoSyncInterval.
   ///
   /// In en, this message translates to:

@@ -1,0 +1,8 @@
+New features:
+• Nextcloud sync now supports subfolders
+• Choose whether to sync all folders or only selected Nextcloud folders
+• Share root and subfolders can be selected separately in settings
+
+Improvements:
+• Local photo scanning now works recursively for synced subfolders
+• Added focused tests for Nextcloud sync and recursive filesystem handling

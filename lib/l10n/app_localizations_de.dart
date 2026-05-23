@@ -166,6 +166,42 @@ class AppLocalizationsDe extends AppLocalizations {
   String get connectionSuccessful => 'Verbindung erfolgreich!';
 
   @override
+  String get syncAllNextcloudFolders => 'Alle Ordner';
+
+  @override
+  String get syncAllNextcloudFoldersSubtitle =>
+      'Bilder aus dem Freigabe-Root und allen Unterordnern synchronisieren';
+
+  @override
+  String get syncSelectedNextcloudFolders => 'Ausgewählte Ordner';
+
+  @override
+  String get syncSelectedNextcloudFoldersSubtitle =>
+      'Wähle die Ordner, deren direkte Bilder verwendet werden sollen';
+
+  @override
+  String get loadNextcloudFolders => 'Ordner laden';
+
+  @override
+  String get loadingNextcloudFolders => 'Lade Ordner...';
+
+  @override
+  String get nextcloudFolderSelectionHint =>
+      'Wähle den Freigabe-Root und alle Unterordner aus, die enthalten sein sollen.';
+
+  @override
+  String get nextcloudShareRoot => 'Freigabe-Root';
+
+  @override
+  String get nextcloudShareRootSubtitle =>
+      'Bilder direkt im freigegebenen Root-Ordner';
+
+  @override
+  String nextcloudFoldersLoadError(String error) {
+    return 'Fehler beim Laden der Ordner: $error';
+  }
+
+  @override
   String get autoSyncInterval => 'Auto-Sync-Intervall';
 
   @override
