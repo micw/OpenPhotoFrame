@@ -1,0 +1,2 @@
+New features:
+• OpenPhotoFrame can now be offered as a launcher app when selecting the Android home app

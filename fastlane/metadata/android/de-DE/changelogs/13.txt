@@ -1,0 +1,2 @@
+Neue Funktionen:
+• OpenPhotoFrame kann bei der Auswahl der Android-Start-App jetzt als Launcher angeboten werden
