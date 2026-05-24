@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:open_photo_frame/domain/interfaces/config_provider.dart';
 import 'package:open_photo_frame/infrastructure/services/android_runtime_settings_sync.dart';
 import 'package:open_photo_frame/infrastructure/services/app_initializer.dart';
+import 'package:open_photo_frame/infrastructure/services/json_config_service.dart';
 
 class FakeConfigProvider extends ChangeNotifier implements ConfigProvider {
   FakeConfigProvider({
@@ -218,12 +219,13 @@ void main() {
       },
     );
 
-    await initializer.initialize();
+    final result = await initializer.initialize();
 
     expect(configProvider.loadCalled, isTrue);
     expect(writer.autostartEnabled, isTrue);
     expect(writer.keepAliveEnabled, isTrue);
     expect(writer.callOrder, ['autostart', 'keepAlive']);
     expect(dateFormattingInitialized, isTrue);
+    expect(result.configLoadResult.state, ConfigLoadState.clean);
   });
 }

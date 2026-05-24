@@ -39,15 +39,25 @@ void main() async {
 
   final configService = JsonConfigService();
   final appInitializer = AppInitializer(configProvider: configService);
-  await appInitializer.initialize();
+  final initializationResult = await appInitializer.initialize();
 
-  runApp(OpenPhotoFrameApp(configProvider: configService));
+  runApp(
+    OpenPhotoFrameApp(
+      configProvider: configService,
+      initialConfigLoadResult: initializationResult.configLoadResult,
+    ),
+  );
 }
 
 class OpenPhotoFrameApp extends StatelessWidget {
   final JsonConfigService configProvider;
+  final ConfigLoadResult initialConfigLoadResult;
 
-  const OpenPhotoFrameApp({super.key, required this.configProvider});
+  const OpenPhotoFrameApp({
+    super.key,
+    required this.configProvider,
+    this.initialConfigLoadResult = const ConfigLoadResult.clean(),
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -157,7 +167,9 @@ class OpenPhotoFrameApp extends StatelessWidget {
           useMaterial3: true,
           scaffoldBackgroundColor: Colors.black,
         ),
-        home: const SlideshowScreen(),
+        home: SlideshowScreen(
+          initialConfigLoadResult: initialConfigLoadResult,
+        ),
       ),
     );
   }
