@@ -1,22 +1,16 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:open_photo_frame/domain/interfaces/config_provider.dart';
-import 'package:open_photo_frame/infrastructure/services/android_runtime_settings_sync.dart';
-import 'package:open_photo_frame/infrastructure/services/app_initializer.dart';
-import 'package:open_photo_frame/infrastructure/services/json_config_service.dart';
+import 'package:open_photo_frame/domain/interfaces/metadata_provider.dart';
+import 'package:open_photo_frame/domain/interfaces/storage_provider.dart';
+import 'package:open_photo_frame/infrastructure/repositories/hybrid_photo_repository.dart';
 
 class FakeConfigProvider extends ChangeNotifier implements ConfigProvider {
-  FakeConfigProvider({
-    this.autostartOnBoot = false,
-    this.keepAliveEnabled = false,
-  });
-
-  bool loadCalled = false;
-
   @override
-  Future<void> load() async {
-    loadCalled = true;
-  }
+  Future<void> load() async {}
 
   @override
   Future<void> save() async {}
@@ -70,10 +64,16 @@ class FakeConfigProvider extends ChangeNotifier implements ConfigProvider {
   set lastSuccessfulSync(DateTime? value) {}
 
   @override
-  bool autostartOnBoot;
+  bool get autostartOnBoot => false;
 
   @override
-  bool keepAliveEnabled;
+  set autostartOnBoot(bool value) {}
+
+  @override
+  bool get keepAliveEnabled => false;
+
+  @override
+  set keepAliveEnabled(bool value) {}
 
   @override
   bool get showClock => false;
@@ -184,48 +184,83 @@ class FakeConfigProvider extends ChangeNotifier implements ConfigProvider {
   set screenOrientation(String value) {}
 }
 
-class RecordingAndroidRuntimeSettingsWriter
-    implements AndroidRuntimeSettingsWriter {
-  bool? autostartEnabled;
-  bool? keepAliveEnabled;
-  final List<String> callOrder = [];
+class FakeStorageProvider implements StorageProvider {
+  FakeStorageProvider(this._directory);
+
+  Directory _directory;
+  final _directoryChangedController = StreamController<void>.broadcast();
 
   @override
-  Future<void> setAutostartEnabled(bool enabled) async {
-    autostartEnabled = enabled;
-    callOrder.add('autostart');
+  Future<Directory> getPhotoDirectory() async => _directory;
+
+  @override
+  bool get isReadOnly => false;
+
+  @override
+  Stream<void> get onDirectoryChanged => _directoryChangedController.stream;
+
+  void changeDirectory(Directory newDirectory) {
+    _directory = newDirectory;
+    _directoryChangedController.add(null);
   }
 
-  @override
-  Future<void> setKeepAliveEnabled(bool enabled) async {
-    keepAliveEnabled = enabled;
-    callOrder.add('keepAlive');
+  void dispose() {
+    _directoryChangedController.close();
   }
 }
 
+class FakeMetadataProvider implements MetadataProvider {
+  @override
+  Future<ExifMetadata> getExifMetadata(File file) async => const ExifMetadata();
+}
+
 void main() {
-  test('initializer loads config before syncing Android runtime settings',
-      () async {
-    final configProvider =
-        FakeConfigProvider(autostartOnBoot: true, keepAliveEnabled: true);
-    final writer = RecordingAndroidRuntimeSettingsWriter();
-    var dateFormattingInitialized = false;
+  group('HybridPhotoRepository filesystem mode', () {
+    late Directory tempDir;
+    late FakeStorageProvider storageProvider;
+    late HybridPhotoRepository repository;
 
-    final initializer = AppInitializer(
-      configProvider: configProvider,
-      runtimeSettingsSync: AndroidRuntimeSettingsSync(writer: writer),
-      initializeDateFormatting: () async {
-        dateFormattingInitialized = true;
-      },
-    );
+    setUp(() async {
+      tempDir = await Directory.systemTemp.createTemp('hybrid_photo_repo_test_');
+      storageProvider = FakeStorageProvider(tempDir);
+      repository = HybridPhotoRepository(
+        storageProvider: storageProvider,
+        metadataProvider: FakeMetadataProvider(),
+        configProvider: FakeConfigProvider(),
+      );
+    });
 
-    final result = await initializer.initialize();
+    tearDown(() async {
+      repository.dispose();
+      storageProvider.dispose();
+      if (await tempDir.exists()) {
+        await tempDir.delete(recursive: true);
+      }
+    });
 
-    expect(configProvider.loadCalled, isTrue);
-    expect(writer.autostartEnabled, isTrue);
-    expect(writer.keepAliveEnabled, isTrue);
-    expect(writer.callOrder, ['autostart', 'keepAlive']);
-    expect(dateFormattingInitialized, isTrue);
-    expect(result.configLoadResult.state, ConfigLoadState.clean);
+    test('initialize scans nested filesystem photos recursively', () async {
+      final nestedFile = File('${tempDir.path}/nested/album/test.jpg');
+      await nestedFile.parent.create(recursive: true);
+      await nestedFile.writeAsString('nested image');
+
+      await repository.initialize();
+
+      expect(repository.photos.length, 1);
+      expect(repository.photos.first.file.path, nestedFile.path);
+    });
+
+    test('recursive watcher picks up nested filesystem changes', () async {
+      await repository.initialize();
+      expect(repository.photos, isEmpty);
+
+      final nestedFile = File('${tempDir.path}/nested/new.png');
+      await nestedFile.parent.create(recursive: true);
+      await nestedFile.writeAsString('new image');
+
+      await Future.delayed(const Duration(seconds: 1));
+
+      expect(repository.photos.length, 1);
+      expect(repository.photos.first.file.path, nestedFile.path);
+    });
   });
 }

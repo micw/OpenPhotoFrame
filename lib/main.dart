@@ -15,6 +15,7 @@ import 'domain/interfaces/display_controller.dart';
 import 'infrastructure/services/app_initializer.dart';
 import 'infrastructure/services/json_config_service.dart';
 import 'infrastructure/services/exif_metadata_provider.dart';
+import 'infrastructure/services/nextcloud_source_config.dart';
 import 'infrastructure/services/nextcloud_sync_service.dart';
 import 'infrastructure/services/noop_sync_service.dart';
 import 'infrastructure/services/photo_service.dart';
@@ -38,15 +39,25 @@ void main() async {
 
   final configService = JsonConfigService();
   final appInitializer = AppInitializer(configProvider: configService);
-  await appInitializer.initialize();
+  final initializationResult = await appInitializer.initialize();
 
-  runApp(OpenPhotoFrameApp(configProvider: configService));
+  runApp(
+    OpenPhotoFrameApp(
+      configProvider: configService,
+      initialConfigLoadResult: initializationResult.configLoadResult,
+    ),
+  );
 }
 
 class OpenPhotoFrameApp extends StatelessWidget {
   final JsonConfigService configProvider;
+  final ConfigLoadResult initialConfigLoadResult;
 
-  const OpenPhotoFrameApp({super.key, required this.configProvider});
+  const OpenPhotoFrameApp({
+    super.key,
+    required this.configProvider,
+    this.initialConfigLoadResult = const ConfigLoadResult.clean(),
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -96,9 +107,14 @@ class OpenPhotoFrameApp extends StatelessWidget {
               final sourceConfig = config.getSourceConfig(type);
 
               if (type == 'nextcloud_link') {
-                final url = sourceConfig['url'] ?? '';
+                final nextcloudConfig = NextcloudSourceConfig.fromMap(sourceConfig);
+                final url = nextcloudConfig.url;
                 if (url.isNotEmpty) {
-                  return NextcloudSyncService.fromPublicLink(url, storage);
+                  return NextcloudSyncService.fromPublicLink(
+                    url,
+                    storage,
+                    sourceConfig: nextcloudConfig,
+                  );
                 }
               }
               
@@ -151,7 +167,9 @@ class OpenPhotoFrameApp extends StatelessWidget {
           useMaterial3: true,
           scaffoldBackgroundColor: Colors.black,
         ),
-        home: const SlideshowScreen(),
+        home: SlideshowScreen(
+          initialConfigLoadResult: initialConfigLoadResult,
+        ),
       ),
     );
   }

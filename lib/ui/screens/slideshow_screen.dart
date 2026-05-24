@@ -19,6 +19,7 @@ import '../../domain/models/photo_entry.dart';
 import '../widgets/photo_slide.dart';
 import '../widgets/clock_overlay.dart';
 import '../widgets/photo_info_overlay.dart';
+import '../../infrastructure/services/json_config_service.dart';
 import 'settings_screen.dart';
 
 final _log = Logger('SlideshowScreen');
@@ -42,7 +43,12 @@ List<DeviceOrientation> _getDeviceOrientations(String orientation) {
 }
 
 class SlideshowScreen extends StatefulWidget {
-  const SlideshowScreen({super.key});
+  const SlideshowScreen({
+    super.key,
+    this.initialConfigLoadResult = const ConfigLoadResult.clean(),
+  });
+
+  final ConfigLoadResult initialConfigLoadResult;
 
   @override
   State<SlideshowScreen> createState() => _SlideshowScreenState();
@@ -108,8 +114,44 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
       _initService();
       _initKeepAliveService();
       _initLightSensor();
+      _showStartupConfigNoticeIfNeeded();
       // Schedule init is now handled reactively in build() via _updateDisplaySchedule()
     });
+  }
+
+  void _showStartupConfigNoticeIfNeeded() {
+    if (!mounted || !widget.initialConfigLoadResult.requiresUserNotice) {
+      return;
+    }
+
+    final message = _buildStartupConfigNoticeMessage();
+    if (message == null) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        duration: const Duration(seconds: 10),
+      ),
+    );
+  }
+
+  String? _buildStartupConfigNoticeMessage() {
+    final isGerman = Localizations.localeOf(context).languageCode == 'de';
+
+    switch (widget.initialConfigLoadResult.state) {
+      case ConfigLoadState.clean:
+        return null;
+      case ConfigLoadState.recoveredFromBackup:
+        return isGerman
+            ? 'Konfiguration war defekt. Das Backup wurde gelesen. Die Anwendung startet mit der letzten gespeicherten Version.'
+            : 'The config was corrupted. The backup was loaded. The app started with the last saved version.';
+      case ConfigLoadState.resetToDefaults:
+        return isGerman
+            ? 'Konfiguration war defekt. Kein lesbares Backup gefunden. Die Anwendung startet unkonfiguriert.'
+            : 'The config was corrupted. No readable backup was found. The app started unconfigured.';
+    }
   }
   
   @override

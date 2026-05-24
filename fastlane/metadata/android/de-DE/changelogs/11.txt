@@ -1,0 +1,8 @@
+Neue Funktionen:
+• Nextcloud-Sync unterstützt jetzt Unterordner
+• Wähle zwischen allen Ordnern oder nur ausgewählten Nextcloud-Ordnern
+• Freigabe-Root und Unterordner können in den Einstellungen separat ausgewählt werden
+
+Verbesserungen:
+• Lokale Fotosuche arbeitet jetzt rekursiv für synchronisierte Unterordner
+• Gezielte Tests für Nextcloud-Sync und rekursive Dateisystem-Verarbeitung ergänzt

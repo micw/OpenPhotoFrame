@@ -5,21 +5,74 @@ import 'package:logging/logging.dart';
 import 'package:path_provider/path_provider.dart';
 import '../../domain/interfaces/config_provider.dart';
 
+enum ConfigLoadState {
+  clean,
+  recoveredFromBackup,
+  resetToDefaults,
+}
+
+class ConfigLoadResult {
+  const ConfigLoadResult._(
+    this.state, {
+    this.primaryError,
+    this.backupError,
+  });
+
+  const ConfigLoadResult.clean()
+    : this._(ConfigLoadState.clean);
+
+  const ConfigLoadResult.recoveredFromBackup({Object? primaryError})
+    : this._(
+        ConfigLoadState.recoveredFromBackup,
+        primaryError: primaryError,
+      );
+
+  const ConfigLoadResult.resetToDefaults({
+    Object? primaryError,
+    Object? backupError,
+  }) : this._(
+         ConfigLoadState.resetToDefaults,
+         primaryError: primaryError,
+         backupError: backupError,
+       );
+
+  final ConfigLoadState state;
+  final Object? primaryError;
+  final Object? backupError;
+
+  bool get requiresUserNotice => state != ConfigLoadState.clean;
+}
+
 class JsonConfigService extends ConfigProvider {
+  JsonConfigService({
+    Future<String> Function()? defaultConfigLoader,
+    Future<Directory> Function()? documentsDirectoryProvider,
+  }) : _defaultConfigLoader =
+           defaultConfigLoader ??
+           (() => rootBundle.loadString('assets/config.json')),
+       _documentsDirectoryProvider =
+           documentsDirectoryProvider ?? getApplicationDocumentsDirectory;
+
   final _log = Logger('JsonConfigService');
+  final Future<String> Function() _defaultConfigLoader;
+  final Future<Directory> Function() _documentsDirectoryProvider;
   Map<String, dynamic> _config = {};
   File? _configFile;
+  ConfigLoadResult _lastLoadResult = const ConfigLoadResult.clean();
+
+  ConfigLoadResult get lastLoadResult => _lastLoadResult;
 
   @override
   Future<void> load() async {
     try {
       // 1. Load asset config as base (contains all defaults)
-      final defaultJsonString = await rootBundle.loadString('assets/config.json');
-      _config = json.decode(defaultJsonString);
+      final defaultJsonString = await _defaultConfigLoader();
+      _config = _decodeConfigJson(defaultJsonString, source: 'assets/config.json');
+      _lastLoadResult = const ConfigLoadResult.clean();
       _log.info("Loaded default config from assets");
       
       // 2. Determine user config path
-      final dir = await getApplicationDocumentsDirectory();
+      final dir = await _documentsDirectoryProvider();
       // Use a subfolder on Desktop to keep things tidy
       final configDir = (Platform.isLinux || Platform.isWindows || Platform.isMacOS)
           ? Directory('${dir.path}/OpenPhotoFrame')
@@ -30,15 +83,15 @@ class JsonConfigService extends ConfigProvider {
       }
 
       _configFile = File('${configDir.path}/config.json');
+      final backupFile = _backupFileFor(_configFile!);
 
       // 3. Load user config and merge over defaults
       if (await _configFile!.exists()) {
         _log.info("Loading user config from ${_configFile!.path}");
-        final userJsonString = await _configFile!.readAsString();
-        final userConfig = json.decode(userJsonString) as Map<String, dynamic>;
-        
-        // Deep merge: user config overwrites defaults
-        _mergeConfig(_config, userConfig);
+        _lastLoadResult = await _loadUserConfigWithRecovery(
+          primaryFile: _configFile!,
+          backupFile: backupFile,
+        );
       } else {
         _log.info("No user config found at ${_configFile!.path}");
       }
@@ -48,6 +101,65 @@ class JsonConfigService extends ConfigProvider {
       _log.severe("Failed to load config", e);
       rethrow;
     }
+  }
+
+  Future<ConfigLoadResult> _loadUserConfigWithRecovery({
+    required File primaryFile,
+    required File backupFile,
+  }) async {
+    try {
+      final userConfig = await _readConfigFile(primaryFile);
+      _mergeConfig(_config, userConfig);
+      return const ConfigLoadResult.clean();
+    } catch (primaryError) {
+      _log.warning(
+        'Failed to read config from ${primaryFile.path}. Trying backup...',
+        primaryError,
+      );
+
+      if (await backupFile.exists()) {
+        try {
+          final backupConfig = await _readConfigFile(backupFile);
+          _mergeConfig(_config, backupConfig);
+          await _repairConfigFilesIfPossible(primaryFile: primaryFile, backupFile: backupFile);
+          return ConfigLoadResult.recoveredFromBackup(primaryError: primaryError);
+        } catch (backupError) {
+          _log.warning(
+            'Failed to read backup config from ${backupFile.path}. Falling back to defaults...',
+            backupError,
+          );
+          await _repairConfigFilesIfPossible(primaryFile: primaryFile, backupFile: backupFile);
+          return ConfigLoadResult.resetToDefaults(
+            primaryError: primaryError,
+            backupError: backupError,
+          );
+        }
+      }
+
+      _log.warning(
+        'No backup config found at ${backupFile.path}. Falling back to defaults...',
+      );
+      await _repairConfigFilesIfPossible(primaryFile: primaryFile, backupFile: backupFile);
+      return ConfigLoadResult.resetToDefaults(primaryError: primaryError);
+    }
+  }
+
+  Future<Map<String, dynamic>> _readConfigFile(File file) async {
+    final jsonString = await file.readAsString();
+    return _decodeConfigJson(jsonString, source: file.path);
+  }
+
+  Map<String, dynamic> _decodeConfigJson(String jsonString, {required String source}) {
+    if (jsonString.trim().isEmpty) {
+      throw FormatException('Config file is empty: $source');
+    }
+
+    final decoded = json.decode(jsonString);
+    if (decoded is! Map) {
+      throw FormatException('Config root must be an object: $source');
+    }
+
+    return Map<String, dynamic>.from(decoded as Map);
   }
   
   /// Recursively merges [overlay] into [base], modifying [base] in place.
@@ -61,6 +173,38 @@ class JsonConfigService extends ConfigProvider {
     }
   }
 
+  File _backupFileFor(File file) => File('${file.path}.bak');
+
+  Future<void> _repairConfigFilesIfPossible({
+    required File primaryFile,
+    required File backupFile,
+  }) async {
+    try {
+      await _persistCurrentConfig(primaryFile: primaryFile, backupFile: backupFile);
+    } catch (e) {
+      _log.warning('Failed to repair config files after recovery', e);
+    }
+  }
+
+  Future<void> _persistCurrentConfig({
+    required File primaryFile,
+    required File backupFile,
+  }) async {
+    final jsonString = const JsonEncoder.withIndent('  ').convert(_config);
+    await _writeConfigAtomically(primaryFile, jsonString);
+    await _writeConfigAtomically(backupFile, jsonString);
+  }
+
+  Future<void> _writeConfigAtomically(File file, String jsonString) async {
+    await file.parent.create(recursive: true);
+    final tempFile = File('${file.path}.tmp');
+    if (await tempFile.exists()) {
+      await tempFile.delete();
+    }
+    await tempFile.writeAsString(jsonString, flush: true);
+    await tempFile.rename(file.path);
+  }
+
   @override
   Future<void> save() async {
     if (_configFile == null) {
@@ -68,8 +212,10 @@ class JsonConfigService extends ConfigProvider {
       return;
     }
     try {
-      final jsonString = const JsonEncoder.withIndent('  ').convert(_config);
-      await _configFile!.writeAsString(jsonString);
+      await _persistCurrentConfig(
+        primaryFile: _configFile!,
+        backupFile: _backupFileFor(_configFile!),
+      );
       _log.info("Config saved successfully");
       notifyListeners(); // Notify UI to rebuild with new config values
     } catch (e) {

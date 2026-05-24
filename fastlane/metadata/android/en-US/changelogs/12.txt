@@ -1,0 +1,10 @@
+New features:
+• Nextcloud sync now shows download progress during photo downloads
+
+Fixes:
+• Fixed device photo permissions on newer Android versions
+
+Improvements:
+• The app now recovers from broken config files on startup
+• Falls back to the backup config when possible
+• Shows a startup notice when config recovery was needed

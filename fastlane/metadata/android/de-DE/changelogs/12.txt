@@ -1,0 +1,10 @@
+Neue Funktionen:
+• Nextcloud-Sync zeigt jetzt den Download-Fortschritt beim Laden von Fotos an
+
+Fehlerbehebungen:
+• Gerätefotos-Berechtigungen auf neueren Android-Versionen korrigiert
+
+Verbesserungen:
+• Die App erholt sich beim Start jetzt von defekten Konfigurationsdateien
+• Fällt wenn möglich auf die Backup-Konfiguration zurück
+• Zeigt beim Start einen Hinweis, wenn eine Konfigurationswiederherstellung nötig war

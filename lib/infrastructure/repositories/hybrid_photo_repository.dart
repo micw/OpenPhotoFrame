@@ -9,6 +9,14 @@ import '../../domain/interfaces/storage_provider.dart';
 import '../../domain/interfaces/config_provider.dart';
 import '../../domain/models/photo_entry.dart';
 
+const PermissionRequestOption _devicePhotoPermissionRequest =
+    PermissionRequestOption(
+      androidPermission: AndroidPermission(
+        type: RequestType.image,
+        mediaLocation: false,
+      ),
+    );
+
 /// A PhotoRepository that can switch between FileSystem and MediaStore sources.
 /// 
 /// - For 'app_folder' and 'local_folder': Uses FileSystem scanning
@@ -96,7 +104,10 @@ class HybridPhotoRepository implements PhotoRepository {
   void _setupFileWatcher() async {
     try {
       final localDir = await _storageProvider.getPhotoDirectory();
-      _dirWatcher = localDir.watch(events: FileSystemEvent.all).listen((event) {
+      _dirWatcher = localDir.watch(
+        events: FileSystemEvent.all,
+        recursive: true,
+      ).listen((event) {
         bool shouldScan = false;
         
         if (event is FileSystemMoveEvent) {
@@ -136,7 +147,11 @@ class HybridPhotoRepository implements PhotoRepository {
         return;
       }
 
-      final files = localDir.listSync().whereType<File>();
+      final files = localDir
+          .listSync(recursive: true, followLinks: false)
+          .whereType<File>()
+          .toList()
+        ..sort((left, right) => left.path.compareTo(right.path));
       final newPhotos = <PhotoEntry>[];
 
       for (var file in files) {
@@ -186,8 +201,10 @@ class HybridPhotoRepository implements PhotoRepository {
   Future<void> _scanMediaStore() async {
     try {
       // Request permission
-      final permission = await PhotoManager.requestPermissionExtend();
-      if (!permission.isAuth) {
+      final permission = await PhotoManager.requestPermissionExtend(
+        requestOption: _devicePhotoPermissionRequest,
+      );
+      if (!permission.hasAccess) {
         _log.warning("Photo permission not granted");
         _photos = [];
         _photosController.add(null);
@@ -328,8 +345,10 @@ class HybridPhotoRepository implements PhotoRepository {
   
   /// Get available albums (for UI picker)
   Future<List<AssetPathEntity>> getAvailableAlbums() async {
-    final permission = await PhotoManager.requestPermissionExtend();
-    if (!permission.isAuth) return [];
+    final permission = await PhotoManager.requestPermissionExtend(
+      requestOption: _devicePhotoPermissionRequest,
+    );
+    if (!permission.hasAccess) return [];
     
     return PhotoManager.getAssetPathList(type: RequestType.image);
   }

@@ -1,8 +1,30 @@
 import 'dart:io';
 import 'package:logging/logging.dart';
-import 'package:webdav_client/webdav_client.dart' as webdav;
 import '../../domain/interfaces/sync_provider.dart';
 import '../../domain/interfaces/storage_provider.dart';
+import 'nextcloud_remote_client.dart';
+import 'nextcloud_source_config.dart';
+
+class NextcloudFolder {
+  const NextcloudFolder({
+    required this.path,
+    required this.depth,
+  });
+
+  final String path;
+  final int depth;
+
+  String get name {
+    if (path.isEmpty) {
+      return '';
+    }
+    final separatorIndex = path.lastIndexOf('/');
+    if (separatorIndex == -1) {
+      return path;
+    }
+    return path.substring(separatorIndex + 1);
+  }
+}
 
 class NextcloudSyncService implements SyncProvider {
   final String webDavUrl;
@@ -10,6 +32,8 @@ class NextcloudSyncService implements SyncProvider {
   final String password;
   final String remotePath;
   final StorageProvider _storageProvider;
+  final NextcloudRemoteClientFactory _clientFactory;
+  final NextcloudSourceConfig _sourceConfig;
   final _log = Logger('NextcloudSyncService');
 
   NextcloudSyncService({
@@ -18,30 +42,31 @@ class NextcloudSyncService implements SyncProvider {
     required this.password,
     required StorageProvider storageProvider,
     this.remotePath = '/',
-  }) : _storageProvider = storageProvider;
+    NextcloudRemoteClientFactory clientFactory = createWebDavNextcloudRemoteClient,
+    NextcloudSourceConfig sourceConfig = const NextcloudSourceConfig(),
+  })  : _storageProvider = storageProvider,
+        _clientFactory = clientFactory,
+        _sourceConfig = sourceConfig;
 
   /// Factory for Public Share Links
   /// Link format: https://cloud.example.com/s/TOKEN
-  factory NextcloudSyncService.fromPublicLink(String link, StorageProvider storageProvider) {
-    if (link.isEmpty) {
-      throw ArgumentError('Nextcloud public link cannot be empty');
-    }
-    
-    final uri = Uri.parse(link);
-    if (uri.pathSegments.isEmpty) {
-      throw ArgumentError('Invalid Nextcloud public link: no path segments');
-    }
-    
-    // Extract token from last segment
-    final token = uri.pathSegments.last;
-    // Construct WebDAV URL: https://cloud.example.com/public.php/webdav
-    final baseUrl = "${uri.scheme}://${uri.host}/public.php/webdav";
-    
+  factory NextcloudSyncService.fromPublicLink(
+    String link,
+    StorageProvider storageProvider, {
+    NextcloudRemoteClientFactory clientFactory = createWebDavNextcloudRemoteClient,
+    NextcloudSourceConfig? sourceConfig,
+  }) {
+    final share = NextcloudPublicShare.fromPublicLink(link);
+
     return NextcloudSyncService(
-      webDavUrl: baseUrl,
-      user: token,
-      password: '', // Public links usually have no password or it's handled differently
+      webDavUrl: share.webDavUrl,
+      user: share.user,
+      password: share.password,
       storageProvider: storageProvider,
+      clientFactory: clientFactory,
+      sourceConfig: (sourceConfig ?? const NextcloudSourceConfig()).copyWith(
+        url: link,
+      ),
     );
   }
 
@@ -50,7 +75,10 @@ class NextcloudSyncService implements SyncProvider {
 
   /// Tests the connection to the WebDAV server.
   /// Returns null on success, or an error message on failure.
-  static Future<String?> testConnection(String publicLink) async {
+  static Future<String?> testConnection(
+    String publicLink, {
+    NextcloudRemoteClientFactory clientFactory = createWebDavNextcloudRemoteClient,
+  }) async {
     final log = Logger('NextcloudSyncService');
     
     if (publicLink.isEmpty) {
@@ -67,19 +95,14 @@ class NextcloudSyncService implements SyncProvider {
       if (uri.host.isEmpty) {
         return 'Invalid URL (no host)';
       }
+      final share = NextcloudPublicShare.fromPublicLink(publicLink);
       
-      // Extract token and build WebDAV URL
-      final token = uri.pathSegments.last;
-      final webDavUrl = "${uri.scheme}://${uri.host}/public.php/webdav";
+      log.info("Testing connection to ${share.webDavUrl}");
       
-      log.info("Testing connection to $webDavUrl");
-      
-      // Create client and try to list files
-      final client = webdav.newClient(
-        webDavUrl,
-        user: token,
-        password: '',
-        debug: false,
+      final client = clientFactory(
+        webDavUrl: share.webDavUrl,
+        user: share.user,
+        password: share.password,
       );
       
       // Try to read root directory - this validates the connection
@@ -105,94 +128,94 @@ class NextcloudSyncService implements SyncProvider {
     }
   }
 
+  static Future<List<NextcloudFolder>> listAvailableFolders(
+    String publicLink, {
+    NextcloudRemoteClientFactory clientFactory = createWebDavNextcloudRemoteClient,
+  }) async {
+    final share = NextcloudPublicShare.fromPublicLink(publicLink);
+    final client = clientFactory(
+      webDavUrl: share.webDavUrl,
+      user: share.user,
+      password: share.password,
+    );
+
+    final folders = <NextcloudFolder>[const NextcloudFolder(path: '', depth: 0)];
+    folders.addAll(
+      await _collectRemoteFolders(
+        client,
+        remoteDirectoryPath: '/',
+        relativeDirectoryPath: '',
+      ),
+    );
+    folders.sort((left, right) => left.path.compareTo(right.path));
+    return folders;
+  }
+
   @override
   Future<void> sync({bool deleteOrphanedFiles = false}) async {
     _log.info("Starting Sync from $webDavUrl (deleteOrphaned: $deleteOrphanedFiles)");
 
-    // 1. Setup Client
-    final client = webdav.newClient(
-      webDavUrl,
+    final client = _clientFactory(
+      webDavUrl: webDavUrl,
       user: user,
       password: password,
-      debug: false,
     );
 
     try {
-      // 2. Get Local Directory via Provider
       final localDir = await _storageProvider.getPhotoDirectory();
       _log.info("Syncing to local directory: ${localDir.path}");
 
-      // 3. List Remote Files
-      // Note: public.php/webdav usually maps the root '/' to the shared folder
       _log.info("Listing remote files...");
-      final files = await client.readDir(remotePath);
-      
-      // Track remote file names for orphan detection
-      final remoteFileNames = <String>{};
+      final remoteFiles = await _collectRemoteImages(
+        client,
+        remoteDirectoryPath: remotePath,
+        relativeDirectoryPath: '',
+      );
+      remoteFiles.sort((left, right) => left.relativePath.compareTo(right.relativePath));
 
-      for (var file in files) {
-        // Skip directories and non-image files
-        if (file.isDir == true) continue;
-        final name = file.name ?? '';
-        if (!_isImage(name)) continue;
-        
-        remoteFileNames.add(name);
-
-        final localFile = File('${localDir.path}/$name');
-
-        // 4. Check if we need to download
-        // Simple check: File exists?
-        // Better check: File size or modification time
-        bool needsDownload = false;
+      final pendingDownloads = <_RemoteImage>[];
+      for (final remoteFile in remoteFiles) {
+        final localFile = File('${localDir.path}/${remoteFile.relativePath}');
         if (!await localFile.exists()) {
-          needsDownload = true;
-        } else {
-          // Optional: Check size if available
-          // if (file.size != await localFile.length()) needsDownload = true;
-        }
-
-        if (needsDownload) {
-          _log.info("Downloading $name...");
-          
-          // Atomic Write: Download to .part file, then rename
-          final partFile = File('${localFile.path}.part');
-          await client.read2File(file.path ?? name, partFile.path);
-          
-          // 5. Sync Date (Crucial for our Freshness Algorithm)
-          if (file.mTime != null) {
-            try {
-              await partFile.setLastModified(file.mTime!);
-            } catch (e) {
-              _log.warning("Could not set modification time for $name: $e");
-            }
-          }
-          
-          // Rename to final file (triggers FileWatcher)
-          await partFile.rename(localFile.path);
+          pendingDownloads.add(remoteFile);
         }
       }
-      
-      // 6. Delete orphaned local files (not on server anymore)
-      if (deleteOrphanedFiles) {
-        _log.info("Checking for orphaned local files...");
-        final localFiles = await localDir.list().toList();
-        
-        for (var entity in localFiles) {
-          if (entity is! File) continue;
-          final fileName = entity.path.split('/').last;
-          
-          // Skip non-image files and .part files
-          if (!_isImage(fileName) || fileName.endsWith('.part')) continue;
-          
-          if (!remoteFileNames.contains(fileName)) {
-            _log.info("Deleting orphaned file: $fileName");
-            try {
-              await entity.delete();
-            } catch (e) {
-              _log.warning("Failed to delete orphaned file $fileName: $e");
-            }
+
+      final remoteRelativePaths = remoteFiles
+          .map((remoteFile) => remoteFile.relativePath)
+          .toSet();
+
+      for (var index = 0; index < pendingDownloads.length; index++) {
+        final remoteFile = pendingDownloads[index];
+        final localFile = File('${localDir.path}/${remoteFile.relativePath}');
+
+        _log.info(
+          'Downloading ${index + 1}/${pendingDownloads.length}...',
+        );
+
+        await localFile.parent.create(recursive: true);
+        final partFile = File('${localFile.path}.part');
+        await partFile.parent.create(recursive: true);
+        await client.downloadFile(remoteFile.remotePath, partFile.path);
+
+        if (remoteFile.modifiedAt != null) {
+          try {
+            await partFile.setLastModified(remoteFile.modifiedAt!);
+          } catch (e) {
+            _log.warning(
+              'Could not set modification time for ${remoteFile.relativePath}: $e',
+            );
           }
         }
+
+        await partFile.rename(localFile.path);
+      }
+      
+      if (deleteOrphanedFiles) {
+        await _deleteOrphanedLocalFiles(
+          localDirectory: localDir,
+          remoteRelativePaths: remoteRelativePaths,
+        );
       }
       
       _log.info("Sync completed.");
@@ -210,4 +233,139 @@ class NextcloudSyncService implements SyncProvider {
            lower.endsWith('.png') || 
            lower.endsWith('.webp');
   }
+
+  Future<List<_RemoteImage>> _collectRemoteImages(
+    NextcloudRemoteClient client, {
+    required String remoteDirectoryPath,
+    required String relativeDirectoryPath,
+  }) async {
+    final entries = await client.readDir(remoteDirectoryPath);
+    final images = <_RemoteImage>[];
+
+    for (final entry in entries) {
+      final entryRelativePath = _joinRelativePath(relativeDirectoryPath, entry.name);
+      if (entry.isDirectory) {
+        images.addAll(
+          await _collectRemoteImages(
+            client,
+            remoteDirectoryPath: entry.path,
+            relativeDirectoryPath: entryRelativePath,
+          ),
+        );
+        continue;
+      }
+
+      if (!_isImage(entry.name) || !_sourceConfig.includesRelativeFile(entryRelativePath)) {
+        continue;
+      }
+
+      images.add(
+        _RemoteImage(
+          remotePath: entry.path,
+          relativePath: entryRelativePath,
+          modifiedAt: entry.modifiedAt,
+        ),
+      );
+    }
+
+    return images;
+  }
+
+  Future<void> _deleteOrphanedLocalFiles({
+    required Directory localDirectory,
+    required Set<String> remoteRelativePaths,
+  }) async {
+    _log.info('Checking for orphaned local files...');
+    final localEntities = await localDirectory.list(recursive: true, followLinks: false).toList();
+
+    for (final entity in localEntities.whereType<File>()) {
+      final relativePath = _relativePathFromLocalFile(localDirectory, entity);
+      if (!_isImage(relativePath) || relativePath.endsWith('.part')) {
+        continue;
+      }
+
+      if (remoteRelativePaths.contains(relativePath)) {
+        continue;
+      }
+
+      _log.info('Deleting orphaned file: $relativePath');
+      try {
+        await entity.delete();
+      } catch (e) {
+        _log.warning('Failed to delete orphaned file $relativePath: $e');
+      }
+    }
+
+    final directories = localEntities.whereType<Directory>().toList()
+      ..sort((left, right) => right.path.length.compareTo(left.path.length));
+    for (final directory in directories) {
+      if (directory.path == localDirectory.path || !await directory.exists()) {
+        continue;
+      }
+
+      if (await directory.list(followLinks: false).isEmpty) {
+        await directory.delete();
+      }
+    }
+  }
+
+  static Future<List<NextcloudFolder>> _collectRemoteFolders(
+    NextcloudRemoteClient client, {
+    required String remoteDirectoryPath,
+    required String relativeDirectoryPath,
+  }) async {
+    final entries = await client.readDir(remoteDirectoryPath);
+    final folders = <NextcloudFolder>[];
+
+    for (final entry in entries) {
+      if (!entry.isDirectory) {
+        continue;
+      }
+
+      final folderPath = _joinRelativePath(relativeDirectoryPath, entry.name);
+      folders.add(
+        NextcloudFolder(
+          path: folderPath,
+          depth: folderPath.isEmpty ? 0 : folderPath.split('/').length,
+        ),
+      );
+      folders.addAll(
+        await _collectRemoteFolders(
+          client,
+          remoteDirectoryPath: entry.path,
+          relativeDirectoryPath: folderPath,
+        ),
+      );
+    }
+
+    return folders;
+  }
+
+  static String _joinRelativePath(String directoryPath, String name) {
+    final normalizedDirectory = NextcloudSourceConfig.normalizeFolderPath(directoryPath);
+    if (normalizedDirectory.isEmpty) {
+      return name;
+    }
+    return '$normalizedDirectory/$name';
+  }
+
+  static String _relativePathFromLocalFile(Directory baseDirectory, File file) {
+    var relativePath = file.path.substring(baseDirectory.path.length);
+    if (relativePath.startsWith(Platform.pathSeparator)) {
+      relativePath = relativePath.substring(1);
+    }
+    return relativePath.replaceAll('\\', '/');
+  }
+}
+
+class _RemoteImage {
+  const _RemoteImage({
+    required this.remotePath,
+    required this.relativePath,
+    this.modifiedAt,
+  });
+
+  final String remotePath;
+  final String relativePath;
+  final DateTime? modifiedAt;
 }
