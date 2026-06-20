@@ -42,7 +42,9 @@ class PhotoService extends ChangeNotifier {
   final _log = Logger('PhotoService');
 
   bool _isInitialized = false;
-  bool _syncLoopRunning = false;
+
+  // Periodic ticker that decides (via wall-clock) when an automatic sync is due.
+  Timer? _syncTimer;
   
   // Sync state management
   bool _isSyncing = false;
@@ -155,38 +157,56 @@ class PhotoService extends ChangeNotifier {
   }
 
   void _startBackgroundSync() {
-    if (_syncLoopRunning) return;
-    _syncLoopRunning = true;
+    // Instead of one long-lived loop that sleeps for the whole interval, we tick
+    // frequently (every minute) and decide via wall-clock whether a sync is due.
+    //
+    // Why: in-process timers (Timer AND Future.delayed) do not fire while the OS
+    // has suspended the app (Android Doze / background). A single long delay can
+    // therefore drift for hours or, in the worst case, never resume the loop.
+    // Short ticks survive suspension far better, and the wall-clock check below
+    // auto-corrects any drift after the device wakes up. A periodic Timer also
+    // can't get "stuck" on a single await or die on an unhandled exception the
+    // way the old while-loop could.
+    _syncTimer?.cancel();
+    _syncTimer = Timer.periodic(const Duration(minutes: 1), (_) {
+      maybeSyncNow();
+    });
 
-    unawaited(() async {
-      while (_syncLoopRunning) {
-      // Read current config values (they might change via settings)
-        final intervalMinutes = _configProvider.syncIntervalMinutes;
+    // Evaluate immediately on startup instead of waiting a full minute.
+    maybeSyncNow();
+  }
 
-        // If interval is 0, sync is disabled
-        if (intervalMinutes <= 0) {
-          _log.info("Auto-sync is disabled. Checking again in 1 minute...");
-          await Future.delayed(const Duration(minutes: 1));
-          continue;
-        }
+  /// Runs an automatic sync if one is due, based on the configured interval and
+  /// the timestamp of the last successful sync.
+  ///
+  /// Safe to call at any time and from anywhere (periodic tick, app resume,
+  /// etc.) — it is a no-op when auto-sync is disabled, when a sync is already
+  /// running, or when the interval has not elapsed yet.
+  Future<void> maybeSyncNow() async {
+    final intervalMinutes = _configProvider.syncIntervalMinutes;
 
-        // Skip if a sync is already running (e.g., manual sync from settings)
-        if (_isSyncing) {
-          _log.info("Sync already in progress, skipping scheduled sync");
-          await Future.delayed(Duration(minutes: intervalMinutes));
-          continue;
-        }
+    // interval <= 0 => auto-sync disabled
+    if (intervalMinutes <= 0) return;
 
-        try {
-          await _executeSync();
-        } catch (e, stackTrace) {
-          _log.warning("Scheduled sync failed, will retry on next interval", e, stackTrace);
-        }
+    // Don't stack syncs (e.g. a manual sync from settings is in progress).
+    if (_isSyncing) return;
 
-        // Wait for configured interval before next sync
-        await Future.delayed(Duration(minutes: intervalMinutes));
+    // Wall-clock check: only sync if enough time has actually passed since the
+    // last successful sync. This makes the schedule robust against missed ticks
+    // while the app was suspended.
+    final lastSync = _configProvider.lastSuccessfulSync;
+    if (lastSync != null) {
+      final elapsed = DateTime.now().difference(lastSync);
+      if (elapsed < Duration(minutes: intervalMinutes)) {
+        return; // not due yet
       }
-    }());
+    }
+
+    try {
+      await _executeSync();
+    } catch (e, stackTrace) {
+      _log.warning("Scheduled sync failed, will retry on next tick", e, stackTrace);
+    }
   }
   
   /// Triggers a manual sync. If a sync is already running, it will be cancelled first.
@@ -305,7 +325,7 @@ class PhotoService extends ChangeNotifier {
   
   @override
   void dispose() {
-    _syncLoopRunning = false;
+    _syncTimer?.cancel();
     _directoryChangeSubscription?.cancel();
     _repository.dispose();
     super.dispose();
