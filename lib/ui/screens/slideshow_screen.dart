@@ -155,7 +155,13 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
         if (config.scheduleEnabled) {
           _applyScheduleState();
         }
-        
+
+        // Catch up on a possibly-missed sync. While the app was suspended in the
+        // background, in-process timers don't fire, so the periodic sync may have
+        // been skipped. maybeSyncNow() re-checks against the wall clock and only
+        // syncs if the configured interval has actually elapsed.
+        context.read<PhotoService>().maybeSyncNow();
+
         // Resume slideshow if it was paused
         _resumeSlideshow();
         break;
