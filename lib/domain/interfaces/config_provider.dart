@@ -59,6 +59,9 @@ abstract class ConfigProvider extends ChangeNotifier {
   
   String get clockPosition; // 'bottomRight', 'bottomLeft', 'topRight', 'topLeft'
   set clockPosition(String value);
+
+  bool get useAmPm; // Use 12h format with AM/PM
+  set useAmPm(bool value);
   
   // Display schedule settings (day/night mode)
   bool get scheduleEnabled; // Enable day/night schedule

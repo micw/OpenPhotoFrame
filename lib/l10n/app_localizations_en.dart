@@ -48,6 +48,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get position => 'Position';
 
   @override
+  String get useAmPm => 'Use AM/PM';
+
+  @override
+  String get useAmPmSubtitle => 'Display clock in 12-hour format with AM/PM';
+
+  @override
   String get sectionPhotoInfo => 'Photo Information';
 
   @override

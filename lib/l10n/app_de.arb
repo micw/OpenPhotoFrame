@@ -16,6 +16,8 @@
   "showClockSubtitle": "Uhrzeit auf der Diashow anzeigen",
   "size": "Größe",
   "position": "Position",
+  "useAmPm": "AM/PM verwenden",
+  "useAmPmSubtitle": "Uhr im 12-Stunden-Format mit AM/PM anzeigen",
   
   "sectionPhotoInfo": "Foto-Informationen",
   "showPhotoInfo": "Foto-Info anzeigen",

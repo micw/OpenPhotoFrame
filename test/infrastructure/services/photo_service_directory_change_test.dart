@@ -54,6 +54,9 @@ class MockConfigProvider extends ChangeNotifier implements ConfigProvider {
   String? get customPhotoPath => _customPhotoPath;
   
   @override
+  bool useAmPm = false;
+
+  @override
   set customPhotoPath(String? value) {
     _customPhotoPath = value;
     notifyListeners();

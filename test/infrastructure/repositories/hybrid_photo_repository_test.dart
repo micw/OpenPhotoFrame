@@ -16,6 +16,9 @@ class FakeConfigProvider extends ChangeNotifier implements ConfigProvider {
   Future<void> save() async {}
 
   @override
+  bool useAmPm = false;
+
+  @override
   String get activeSourceType => '';
 
   @override

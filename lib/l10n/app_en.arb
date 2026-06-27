@@ -16,6 +16,8 @@
   "showClockSubtitle": "Display time on slideshow",
   "size": "Size",
   "position": "Position",
+  "useAmPm": "Use AM/PM",
+  "useAmPmSubtitle": "Display clock in 12-hour format with AM/PM",
   
   "sectionPhotoInfo": "Photo Information",
   "showPhotoInfo": "Show Photo Info",
