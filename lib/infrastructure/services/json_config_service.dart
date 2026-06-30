@@ -383,6 +383,14 @@ class JsonConfigService extends ConfigProvider {
   set clockPosition(String value) {
     _config['clock_position'] = value;
   }
+
+  @override
+  bool get useAmPm => _config['use_am_pm'] ?? false;
+
+  @override
+  set useAmPm(bool value) {
+    _config['use_am_pm'] = value;
+  }
   
   // Display schedule settings (day/night mode)
   @override

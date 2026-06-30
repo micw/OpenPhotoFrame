@@ -5,11 +5,13 @@ import 'package:flutter/material.dart';
 class ClockOverlay extends StatefulWidget {
   final String size; // 'small', 'medium', 'large'
   final String position; // 'bottomRight', 'bottomLeft', 'topRight', 'topLeft'
+  final bool useAmPm;
 
   const ClockOverlay({
     super.key,
     required this.size,
     required this.position,
+    required this.useAmPm,
   });
 
   @override
@@ -78,7 +80,14 @@ class _ClockOverlayState extends State<ClockOverlay> {
 
   @override
   Widget build(BuildContext context) {
-    final timeString = '${_now.hour.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}';
+    String timeString;
+    if (widget.useAmPm) {
+      final hour = _now.hour % 12 == 0 ? 12 : _now.hour % 12;
+      final amPm = _now.hour < 12 ? 'AM' : 'PM';
+      timeString = '$hour:${_now.minute.toString().padLeft(2, '0')} $amPm';
+    } else {
+      timeString = '${_now.hour.toString().padLeft(2, '0')}:${_now.minute.toString().padLeft(2, '0')}';
+    }
     
     return Align(
       alignment: _alignment,

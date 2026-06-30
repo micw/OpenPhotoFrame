@@ -727,9 +727,10 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
           // 2. Clock Overlay
           if (config.showClock)
             ClockOverlay(
-              key: ValueKey('clock_${config.clockSize}_${config.clockPosition}'),
+              key: ValueKey('clock_${config.clockSize}_${config.clockPosition}_${config.useAmPm}'),
               size: config.clockSize,
               position: config.clockPosition,
+              useAmPm: config.useAmPm,
             ),
 
           // 3. Photo Info Overlay

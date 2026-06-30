@@ -4,6 +4,10 @@
   "blur_borders": true,
   "sync_interval_minutes": 15,
   "delete_orphaned_files": true,
+  "show_clock": true,
+  "clock_size": "large",
+  "clock_position": "bottomRight",
+  "use_am_pm": false,
   "active_source": "",
   "sources": {
     "nextcloud_link": {

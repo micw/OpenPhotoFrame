@@ -176,6 +176,18 @@ abstract class AppLocalizations {
   /// **'Position'**
   String get position;
 
+  /// No description provided for @useAmPm.
+  ///
+  /// In en, this message translates to:
+  /// **'Use AM/PM'**
+  String get useAmPm;
+
+  /// No description provided for @useAmPmSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Display clock in 12-hour format with AM/PM'**
+  String get useAmPmSubtitle;
+
   /// No description provided for @sectionPhotoInfo.
   ///
   /// In en, this message translates to:
