@@ -950,6 +950,12 @@ abstract class AppLocalizations {
   /// **'Tap center of screen to open settings'**
   String get tapCenterToOpenSettings;
 
+  /// No description provided for @tapToExit.
+  ///
+  /// In en, this message translates to:
+  /// **'Tap to exit'**
+  String get tapToExit;
+
   /// No description provided for @screenOrientation.
   ///
   /// In en, this message translates to:

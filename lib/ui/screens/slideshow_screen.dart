@@ -82,6 +82,9 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
   // Current photo location name (from geocoding)
   String? _currentLocationName;
 
+  // Dream Mode status
+  bool _isDreamMode = false;
+
   @override
   void initState() {
     super.initState();
@@ -98,6 +101,7 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     // Initialize Service
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _initService();
+      _checkDreamMode();
       _initKeepAliveService();
       _showStartupConfigNoticeIfNeeded();
       // Schedule init is now handled reactively in build() via _updateDisplaySchedule()
@@ -157,6 +161,7 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
         }
         
         // Resume slideshow if it was paused
+        _checkDreamMode();
         _resumeSlideshow();
         break;
       case AppLifecycleState.detached:
@@ -436,10 +441,24 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     _startTimer();
   }
 
+  Future<void> _checkDreamMode() async {
+    final isDream = await NativeScreenControlService.isDreamMode();
+    if (mounted) {
+      setState(() => _isDreamMode = isDream);
+      if (isDream) {
+        // If we are in dream mode, ensure we are showing the slideshow (root route)
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
+    }
+  }
+
   void _openSettings() {
     _timer?.cancel(); // Stop auto-advance while in settings
     
-    Navigator.of(context).push(
+    if (_isDreamMode) {
+      NativeScreenControlService.exitApp();
+    } else {
+      Navigator.of(context).push(
       MaterialPageRoute(builder: (context) => const SettingsScreen()),
     ).then((_) {
       // Restore immersive mode after returning from settings
@@ -452,6 +471,7 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
       // Restart timer when returning from settings
       _startTimer();
     });
+    }
   }
 
   Future<void> _transitionTo(PhotoEntry photo, {SlideDirection? slideDirection}) async {
@@ -673,10 +693,10 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
                   AppLocalizations.of(context)!.noPhotosFound,
                   style: TextStyle(color: Colors.white, fontSize: 20),
                 ),
-                SizedBox(height: 8),
+                const SizedBox(height: 8),
                 Text(
-                  AppLocalizations.of(context)!.tapCenterToOpenSettings,
-                  style: TextStyle(color: Colors.white54, fontSize: 14),
+                  _isDreamMode ? AppLocalizations.of(context)!.tapToExit : AppLocalizations.of(context)!.tapCenterToOpenSettings,
+                  style: const TextStyle(color: Colors.white54, fontSize: 14),
                 ),
               ],
             ),

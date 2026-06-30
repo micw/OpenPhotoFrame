@@ -82,6 +82,23 @@ class ScreenControlHandler(private val context: Context) {
                 "isScreenOn" -> {
                     result.success(powerManager.isInteractive)
                 }
+                "isDreamMode" -> {
+                    val activity = context as? MainActivity
+                    result.success(activity?.isDreamMode ?: false)
+                }
+                "exitApp" -> {
+                    val activity = context as? android.app.Activity
+                    if (activity != null) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            activity.finishAndRemoveTask()
+                        } else {
+                            activity.finish()
+                        }
+                        result.success(true)
+                    } else {
+                        result.error("UNAVAILABLE", "Activity not available", null)
+                    }
+                }
                 else -> {
                     result.notImplemented()
                 }

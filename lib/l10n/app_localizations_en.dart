@@ -500,6 +500,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get tapCenterToOpenSettings => 'Tap center of screen to open settings';
 
   @override
+  String get tapToExit => 'Tap to exit';
+
+  @override
   String get screenOrientation => 'Screen Orientation';
 
   @override

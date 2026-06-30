@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 /// - Turn the screen completely off using lockNow()
 /// - Schedule wake-up using AlarmManager
 /// - Wake the screen immediately
+/// - Handle Dream Mode (Daydream) interactions
 /// 
 /// Requires Device Admin permission to be enabled by the user.
 class NativeScreenControlService {
@@ -123,6 +124,35 @@ class NativeScreenControlService {
     } catch (e) {
       print('Error checking screen state: $e');
       return true;
+    }
+  }
+
+  /// Check if the app is currently running in Dream Mode (Daydream/Screen Saver).
+  static Future<bool> isDreamMode() async {
+    if (!isSupported) return false;
+
+    try {
+      final result = await _channel.invokeMethod<bool>('isDreamMode');
+      return result ?? false;
+    } catch (e) {
+      print('Error checking Dream Mode: $e');
+      return false;
+    }
+  }
+
+  /// Exit the app and remove it from recent tasks.
+  /// This is used to return to the previous state (e.g., from Dream Mode).
+  static Future<void> exitApp() async {
+    if (!isSupported) {
+      // For non-Android platforms, we just pop the current route
+      // which might not exit the app but is the closest behavior.
+      return;
+    }
+
+    try {
+      await _channel.invokeMethod('exitApp');
+    } catch (e) {
+      print('Error exiting app: $e');
     }
   }
 }

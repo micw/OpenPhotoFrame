@@ -505,6 +505,9 @@ class AppLocalizationsDe extends AppLocalizations {
       'Tippe auf die Bildschirmmitte um Einstellungen zu öffnen';
 
   @override
+  String get tapToExit => 'Tippen zum Beenden';
+
+  @override
   String get screenOrientation => 'Bildschirmausrichtung';
 
   @override
