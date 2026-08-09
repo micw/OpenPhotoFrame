@@ -272,6 +272,42 @@ abstract class AppLocalizations {
   /// **'Use photos from a local folder'**
   String get localFolderSubtitle;
 
+  /// No description provided for @icloudAlbum.
+  ///
+  /// In en, this message translates to:
+  /// **'iCloud Shared Album'**
+  String get icloudAlbum;
+
+  /// No description provided for @icloudAlbumSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Sync from Apple Photos shared album'**
+  String get icloudAlbumSubtitle;
+
+  /// No description provided for @icloudAlbumUrl.
+  ///
+  /// In en, this message translates to:
+  /// **'iCloud Shared Album URL'**
+  String get icloudAlbumUrl;
+
+  /// No description provided for @icloudAlbumUrlHint.
+  ///
+  /// In en, this message translates to:
+  /// **'https://www.icloud.com/photos/…'**
+  String get icloudAlbumUrlHint;
+
+  /// No description provided for @icloudAlbumUrlInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid icloud.com/photos shared album URL'**
+  String get icloudAlbumUrlInvalid;
+
+  /// No description provided for @webSettingsAddress.
+  ///
+  /// In en, this message translates to:
+  /// **'Web settings available at {url}'**
+  String webSettingsAddress(String url);
+
   /// No description provided for @nextcloud.
   ///
   /// In en, this message translates to:

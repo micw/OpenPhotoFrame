@@ -15,6 +15,8 @@ import '../../infrastructure/repositories/hybrid_photo_repository.dart';
 import '../../infrastructure/services/photo_service.dart';
 import '../../infrastructure/services/native_updater_service.dart';
 import '../../infrastructure/services/update_service.dart';
+import '../../infrastructure/services/icloud_album_source_config.dart';
+import '../../infrastructure/services/web_server_service.dart';
 import '../../infrastructure/services/webdav_source_config.dart';
 import '../../infrastructure/services/webdav_sync_service.dart';
 import '../../infrastructure/services/autostart_service.dart';
@@ -43,7 +45,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     minute: 0,
   );
 
-  late int _slideDurationMinutes;
+  late int _slideDurationSeconds;
   late double _transitionDurationSeconds;
   late bool _blurBorders;
   late String _syncType;
@@ -52,6 +54,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   late TextEditingController _webdavUserController;
   late TextEditingController _webdavPasswordController;
   late bool _webdavAllowInvalidCertificate;
+  late TextEditingController _icloudAlbumUrlController;
   late int _syncIntervalMinutes;
   late bool _deleteOrphanedFiles;
   late bool _autostartOnBoot;
@@ -110,6 +113,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   // Track original values to detect changes
   late String _originalSyncType;
   late WebDavSourceConfig _originalWebDavSourceConfig;
+  late String _originalICloudAlbumUrl;
   
   @override
   void initState() {
@@ -126,7 +130,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     
     final config = context.read<ConfigProvider>();
-    _slideDurationMinutes = (config.slideDurationSeconds / 60).round().clamp(1, 15);
+    _slideDurationSeconds = config.slideDurationSeconds.clamp(10, 3600);
     _transitionDurationSeconds = (config.transitionDurationMs / 1000.0).clamp(0.5, 5.0);
     _blurBorders = config.blurBorders;
     // Default sync type: app_folder on Android, local_folder on Desktop
@@ -214,9 +218,16 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
         )
         .toList(growable: false);
     
+    final icloudConfig = ICloudAlbumSourceConfig.fromMap(
+      config.getSourceConfig('icloud_album'),
+    );
+    _icloudAlbumUrlController = TextEditingController(text: icloudConfig.albumUrl)
+      ..addListener(() => setState(() {}));
+
     // Store original values for comparison on save
     _originalSyncType = _syncType;
     _originalWebDavSourceConfig = nextcloudConfig;
+    _originalICloudAlbumUrl = icloudConfig.albumUrl;
     
     // Load saved album selection for device_photos mode
     final devicePhotosConfig = config.getSourceConfig('device_photos');
@@ -286,6 +297,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     _nextcloudUrlController.dispose();
     _webdavUserController.dispose();
     _webdavPasswordController.dispose();
+    _icloudAlbumUrlController.dispose();
     super.dispose();
   }
   
@@ -302,19 +314,23 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     
     // Detect if sync configuration changed
     final newNextcloudUrl = _nextcloudUrlController.text.trim();
+    final newICloudAlbumUrl = _icloudAlbumUrlController.text.trim();
     final newWebDavSourceConfig = _buildWebDavSourceConfig(
       url: newNextcloudUrl,
     );
     final nextcloudConfigChanged =
       !_nextcloudConfigsEqual(newWebDavSourceConfig, _originalWebDavSourceConfig);
+    final icloudConfigChanged = newICloudAlbumUrl != _originalICloudAlbumUrl;
     final syncConfigChanged =
       _syncType != _originalSyncType ||
-      (_syncType == 'nextcloud_link' && nextcloudConfigChanged);
-    final newSyncSourceConfigured = syncConfigChanged && 
-        _syncType == 'nextcloud_link' && 
-        newNextcloudUrl.isNotEmpty;
+      (_syncType == 'nextcloud_link' && nextcloudConfigChanged) ||
+      (_syncType == 'icloud_album' && icloudConfigChanged);
+    final newSyncSourceConfigured = syncConfigChanged && (
+        (_syncType == 'nextcloud_link' && newNextcloudUrl.isNotEmpty) ||
+        (_syncType == 'icloud_album' && ICloudAlbumSourceConfig(albumUrl: newICloudAlbumUrl).isValid)
+    );
     
-    config.slideDurationSeconds = _slideDurationMinutes * 60;
+    config.slideDurationSeconds = _slideDurationSeconds;
     config.transitionDurationMs = (_transitionDurationSeconds * 1000).round();
     config.blurBorders = _blurBorders;
     // app_folder and local_folder both use empty activeSourceType (no sync)
@@ -366,7 +382,13 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     if (_syncType == 'nextcloud_link') {
       config.setSourceConfig('nextcloud_link', newWebDavSourceConfig.toMap());
     }
-    
+    if (_syncType == 'icloud_album') {
+      config.setSourceConfig(
+        'icloud_album',
+        ICloudAlbumSourceConfig(albumUrl: newICloudAlbumUrl).toMap(),
+      );
+    }
+
     await config.save();
     
     // If a new sync source was configured, trigger an immediate sync
@@ -380,7 +402,14 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        await _saveSettings();
+        if (mounted) Navigator.of(context).pop();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.settings),
         leading: IconButton(
@@ -405,13 +434,20 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           _buildSliderSetting(
             icon: Icons.timer,
             title: AppLocalizations.of(context)!.slideDuration,
-            value: _slideDurationMinutes.toDouble(),
-            min: 1,
-            max: 15,
-            divisions: 14,
-            unit: AppLocalizations.of(context)!.unitMinutes,
+            value: _slideDurationSeconds.toDouble(),
+            min: 10,
+            max: 3600,
+            divisions: 359, // 10-second steps
+            unit: '',
+            formatValue: (v) {
+              final s = v.round();
+              if (s < 60) return '${s}s';
+              final m = s ~/ 60;
+              final rem = s % 60;
+              return rem > 0 ? '${m}m ${rem}s' : '${m}m';
+            },
             onChanged: (value) {
-              setState(() => _slideDurationMinutes = value.round());
+              setState(() => _slideDurationSeconds = value.round());
             },
           ),
           
@@ -534,18 +570,47 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           // === SYNC SETTINGS ===
           _buildSectionHeader(AppLocalizations.of(context)!.sectionPhotoSource),
           const SizedBox(height: 8),
-          
+
+          // Web settings server banner
+          Builder(builder: (ctx) {
+            final webServer = ctx.read<WebServerService>();
+            final url = webServer.serverUrl;
+            if (url == null) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: ListTile(
+                leading: const Icon(Icons.open_in_browser),
+                title: Text(
+                  AppLocalizations.of(ctx)!.webSettingsAddress(url),
+                  style: const TextStyle(fontSize: 13),
+                ),
+                dense: true,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(
+                      color: Theme.of(ctx).colorScheme.outline.withOpacity(0.4)),
+                ),
+              ),
+            );
+          }),
+
           // Sync Type Selection (includes inline folder selector for local_folder)
           _buildSyncTypeSelector(),
-          
+
+          // iCloud URL field (only visible if iCloud selected)
+          if (_syncType == 'icloud_album') ...[
+            const SizedBox(height: 16),
+            _buildICloudAlbumSettings(),
+          ],
+
           // Nextcloud URL (only visible if nextcloud selected)
           if (_syncType == 'nextcloud_link') ...[
             const SizedBox(height: 16),
             _buildNextcloudSettings(),
           ],
-          
-          // Sync options (only visible if sync enabled - i.e. Nextcloud)
-          if (_syncType == 'nextcloud_link') ...[
+
+          // Sync options (iCloud or Nextcloud)
+          if (_syncType == 'icloud_album' || _syncType == 'nextcloud_link') ...[
             const SizedBox(height: 16),
             
             // Sync Interval Slider
@@ -671,9 +736,10 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           ),
         ],
       ),
-    );
+    ),   // end Scaffold (child of PopScope)
+    );   // end PopScope
   }
-  
+
   Widget _buildAutoUpdateSection() {
     final l10n = AppLocalizations.of(context)!;
     final hintColor = Theme.of(context).colorScheme.onSurfaceVariant;
@@ -842,6 +908,15 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             _buildLocalFolderSelector(),
         ],
         RadioListTile<String>(
+          title: Text(AppLocalizations.of(context)!.icloudAlbum),
+          subtitle: Text(AppLocalizations.of(context)!.icloudAlbumSubtitle),
+          value: 'icloud_album',
+          groupValue: _syncType,
+          onChanged: (value) {
+            setState(() => _syncType = value!);
+          },
+        ),
+        RadioListTile<String>(
           title: Text(AppLocalizations.of(context)!.nextcloud),
           subtitle: Text(AppLocalizations.of(context)!.nextcloudSubtitle),
           value: 'nextcloud_link',
@@ -851,6 +926,41 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildICloudAlbumSettings() {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.icloudAlbumUrl,
+              style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _icloudAlbumUrlController,
+            decoration: InputDecoration(
+              hintText: l10n.icloudAlbumUrlHint,
+              border: const OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.url,
+          ),
+          const SizedBox(height: 4),
+          Builder(builder: (ctx) {
+            final url = _icloudAlbumUrlController.text.trim();
+            final valid = url.isEmpty ||
+                ICloudAlbumSourceConfig(albumUrl: url).isValid;
+            return valid
+                ? const SizedBox.shrink()
+                : Text(l10n.icloudAlbumUrlInvalid,
+                    style: TextStyle(
+                        color: Theme.of(ctx).colorScheme.error,
+                        fontSize: 12));
+          }),
+        ],
+      ),
     );
   }
   
@@ -2319,6 +2429,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           const Spacer(),
           SegmentedButton<String>(
             segments: const [
+              ButtonSegment(value: 'xsmall', label: Text('XS')),
               ButtonSegment(value: 'small', label: Text('S')),
               ButtonSegment(value: 'medium', label: Text('M')),
               ButtonSegment(value: 'large', label: Text('L')),

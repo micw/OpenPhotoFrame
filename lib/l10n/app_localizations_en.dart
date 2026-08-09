@@ -100,6 +100,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get localFolderSubtitle => 'Use photos from a local folder';
 
   @override
+  String get icloudAlbum => 'iCloud Shared Album';
+
+  @override
+  String get icloudAlbumSubtitle => 'Sync from Apple Photos shared album';
+
+  @override
+  String get icloudAlbumUrl => 'iCloud Shared Album URL';
+
+  @override
+  String get icloudAlbumUrlHint => 'https://www.icloud.com/photos/…';
+
+  @override
+  String get icloudAlbumUrlInvalid =>
+      'Enter a valid icloud.com/photos shared album URL';
+
+  @override
+  String webSettingsAddress(String url) {
+    return 'Web settings available at $url';
+  }
+
+  @override
   String get nextcloud => 'Nextcloud';
 
   @override

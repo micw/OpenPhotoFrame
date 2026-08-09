@@ -36,6 +36,10 @@ android {
         jvmTarget = JavaVersion.VERSION_17.toString()
     }
 
+    lint {
+        disable += "Instantiatable"
+    }
+
     defaultConfig {
         applicationId = "io.github.micw.openphotoframe"
         // You can update the following values to match your application needs.

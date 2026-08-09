@@ -76,6 +76,7 @@ class PhotoService extends ChangeNotifier {
   bool get isSyncing => _isSyncing;
   SyncProgress? get syncProgress => _syncProgress;
   SyncStatus? get syncStatus => _syncStatus;
+  int get photoCount => _repository.photos.length;
 
   Future<void> initialize() async {
     if (_isInitialized) return;

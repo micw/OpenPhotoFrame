@@ -89,6 +89,13 @@
             </intent-filter>
         </receiver>
         
+        <!-- Short-lived service used to launch MainActivity from boot (Android 11+ background start workaround) -->
+        <service
+            android:name=".BootLaunchService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="mediaPlayback"/>
+
         <!-- Keep Alive Service to prevent app from being killed on low-memory devices -->
         <service
             android:name=".KeepAliveService"
