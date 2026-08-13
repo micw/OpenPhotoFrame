@@ -19,17 +19,19 @@ class ICloudAlbumSyncException implements Exception {
 }
 
 class ICloudAlbumSyncService implements SyncProvider {
-  static const Duration _requestTimeout = Duration(seconds: 30);
   static const Duration _downloadIdleTimeout = Duration(minutes: 15);
 
   ICloudAlbumSyncService({
     required ICloudAlbumSourceConfig config,
     required StorageProvider storageProvider,
+    int timeoutSeconds = 60,
   })  : _config = config,
-        _storageProvider = storageProvider;
+        _storageProvider = storageProvider,
+        _requestTimeout = Duration(seconds: timeoutSeconds);
 
   final ICloudAlbumSourceConfig _config;
   final StorageProvider _storageProvider;
+  final Duration _requestTimeout;
   final _log = Logger('ICloudAlbumSyncService');
 
   @override

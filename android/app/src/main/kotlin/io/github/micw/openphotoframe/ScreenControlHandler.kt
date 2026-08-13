@@ -58,6 +58,13 @@ class ScreenControlHandler(private val context: Context) {
                     openDeviceAdminSettings()
                     result.success(null)
                 }
+                "openWifiSettings" -> {
+                    val intent = Intent(android.provider.Settings.ACTION_WIFI_SETTINGS).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                    result.success(null)
+                }
                 "turnScreenOff" -> {
                     val success = turnScreenOff()
                     result.success(success)

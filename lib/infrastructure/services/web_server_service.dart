@@ -126,6 +126,7 @@ class WebServerService {
         'blur_borders': _config.blurBorders,
         // Sync
         'sync_interval_minutes': _config.syncIntervalMinutes,
+        'sync_timeout_seconds': _config.syncTimeoutSeconds,
         'delete_orphaned_files': _config.deleteOrphanedFiles,
         // Clock
         'show_clock': _config.showClock,
@@ -192,6 +193,7 @@ class WebServerService {
     setBool('blur_borders', (v) => _config.blurBorders = v);
     // Sync
     setInt('sync_interval_minutes', (v) => _config.syncIntervalMinutes = v);
+    setInt('sync_timeout_seconds', (v) => _config.syncTimeoutSeconds = v);
     setBool('delete_orphaned_files', (v) => _config.deleteOrphanedFiles = v);
     // Clock
     setBool('show_clock', (v) => _config.showClock = v);
@@ -544,6 +546,11 @@ button{padding:10px 20px;border:none;border-radius:6px;cursor:pointer;font-size:
     <input type="range" id="sync-int" min="0" max="180" step="5">
     <span class="val" id="sync-lbl">—</span>
   </div>
+  <div class="row">
+    <label><span>Sync timeout<small style="display:block">Seconds before a slow iCloud/Nextcloud request is aborted</small></span></label>
+    <input type="range" id="sync-timeout" min="15" max="120" step="15">
+    <span class="val" id="sync-timeout-lbl">—</span>
+  </div>
   <div class="toggle">
     <span>Delete photos removed from source<small>Remove local files no longer on server</small></span>
     <input type="checkbox" id="del-orphans">
@@ -664,6 +671,8 @@ function applyConfig(c){
   // Sync
   const si=c.sync_interval_minutes??15;
   setRange('sync-int',si); syncLbl(si);
+  const st=c.sync_timeout_seconds??60;
+  setRange('sync-timeout',st); syncTimeoutLbl(st);
   setCheck('del-orphans', c.delete_orphaned_files??false);
 
   // Android
@@ -707,9 +716,11 @@ document.getElementById('fri-sat-on').addEventListener('change',e=>{
 function durLbl(v){const s=+v;document.getElementById('dur-lbl').textContent=s<60?s+'s':(s/60|0)+'m'+(s%60?(s%60)+'s':'');}
 function transLbl(v){document.getElementById('trans-lbl').textContent=(+v/1000).toFixed(1)+'s';}
 function syncLbl(v){const m=+v;document.getElementById('sync-lbl').textContent=m?m+'m':'off';}
+function syncTimeoutLbl(v){document.getElementById('sync-timeout-lbl').textContent=v+'s';}
 document.getElementById('slide-dur').addEventListener('input',e=>durLbl(e.target.value));
 document.getElementById('trans-dur').addEventListener('input',e=>transLbl(e.target.value));
 document.getElementById('sync-int').addEventListener('input',e=>syncLbl(e.target.value));
+document.getElementById('sync-timeout').addEventListener('input',e=>syncTimeoutLbl(e.target.value));
 
 /* ---- save ---- */
 async function saveSettings(){
@@ -729,6 +740,7 @@ async function saveSettings(){
     transition_duration_ms:+document.getElementById('trans-dur').value,
     blur_borders:document.getElementById('blur-borders').checked,
     sync_interval_minutes:+document.getElementById('sync-int').value,
+    sync_timeout_seconds:+document.getElementById('sync-timeout').value,
     delete_orphaned_files:document.getElementById('del-orphans').checked,
     show_clock:document.getElementById('show-clock').checked,
     clock_size:document.getElementById('clock-size').value,

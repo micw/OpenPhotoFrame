@@ -56,6 +56,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   late bool _webdavAllowInvalidCertificate;
   late TextEditingController _icloudAlbumUrlController;
   late int _syncIntervalMinutes;
+  late int _syncTimeoutSeconds;
   late bool _deleteOrphanedFiles;
   late bool _autostartOnBoot;
   late bool _keepAliveEnabled;
@@ -138,6 +139,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     _syncType = config.activeSourceType.isEmpty ? defaultSyncType : config.activeSourceType;
     _localFolderPath = config.customPhotoPath ?? '';
     _syncIntervalMinutes = config.syncIntervalMinutes;
+    _syncTimeoutSeconds = config.syncTimeoutSeconds;
     _deleteOrphanedFiles = config.deleteOrphanedFiles;
     _autostartOnBoot = config.autostartOnBoot;
     _keepAliveEnabled = config.keepAliveEnabled;
@@ -344,6 +346,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
       config.customPhotoPath = null;
     }
     config.syncIntervalMinutes = _syncIntervalMinutes;
+    config.syncTimeoutSeconds = _syncTimeoutSeconds;
     config.deleteOrphanedFiles = _deleteOrphanedFiles;
     config.autostartOnBoot = _autostartOnBoot;
     config.keepAliveEnabled = _keepAliveEnabled;
@@ -390,13 +393,16 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     }
 
     await config.save();
-    
-    // If a new sync source was configured, trigger an immediate sync
-    // This runs in the background (fire-and-forget) so the user can continue
-    if (newSyncSourceConfigured) {
+
+    // Trigger a sync whenever a source is configured, not just on first setup.
+    // Covers: URL changes, timeout changes, or simply tapping Save to force a retry.
+    final sourceIsConfigured =
+        (_syncType == 'nextcloud_link' && newNextcloudUrl.isNotEmpty) ||
+        (_syncType == 'icloud_album' &&
+            ICloudAlbumSourceConfig(albumUrl: newICloudAlbumUrl).isValid);
+    if (sourceIsConfigured) {
       final photoService = context.read<PhotoService>();
-      // Don't await - let it run in the background
-      photoService.triggerSync();
+      photoService.triggerSync(); // fire-and-forget
     }
   }
 
@@ -423,9 +429,33 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // === DEVICE IP / WEB SETTINGS URL ===
+          if (Platform.isAndroid)
+            Builder(builder: (ctx) {
+              final url = ctx.read<WebServerService>().serverUrl;
+              if (url == null) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Theme.of(ctx).colorScheme.surfaceVariant.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.wifi, size: 18, color: Theme.of(ctx).colorScheme.primary),
+                      const SizedBox(width: 10),
+                      Text(url, style: TextStyle(fontSize: 13, color: Theme.of(ctx).colorScheme.primary, fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                ),
+              );
+            }),
+
           // === DEVICE ADMIN WARNING ===
           if (Platform.isAndroid && _deviceAdminEnabled) ..._buildDeviceAdminWarning(),
-          
+
           // === SLIDESHOW SETTINGS ===
           _buildSectionHeader(AppLocalizations.of(context)!.sectionSlideshow),
           const SizedBox(height: 8),
@@ -615,9 +645,14 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             
             // Sync Interval Slider
             _buildSyncIntervalSlider(),
-            
+
             const SizedBox(height: 8),
-            
+
+            // Sync Timeout Slider
+            _buildSyncTimeoutSlider(),
+
+            const SizedBox(height: 8),
+
             // Delete orphaned files checkbox
                 SwitchListTile(
               title: Text(AppLocalizations.of(context)!.deleteOrphanedFiles),
@@ -664,7 +699,17 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           if (Platform.isAndroid) ...[
             _buildSectionHeader(AppLocalizations.of(context)!.sectionAndroid),
             const SizedBox(height: 8),
-            
+
+            ListTile(
+              leading: const Icon(Icons.wifi),
+              title: const Text('Wi-Fi Settings'),
+              subtitle: const Text('Connect to a network'),
+              trailing: const Icon(Icons.open_in_new, size: 18),
+              onTap: () => NativeScreenControlService.openWifiSettings(),
+            ),
+
+            const SizedBox(height: 8),
+
             SwitchListTile(
               title: Text(AppLocalizations.of(context)!.startOnBoot),
               subtitle: Text(AppLocalizations.of(context)!.startOnBootSubtitle),
@@ -1715,6 +1760,36 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     );
   }
   
+  Widget _buildSyncTimeoutSlider() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.timer_outlined, size: 20),
+            const SizedBox(width: 12),
+            const Expanded(child: Text('Sync timeout')),
+            Text(
+              '$_syncTimeoutSeconds s',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        Slider(
+          value: _syncTimeoutSeconds.toDouble(),
+          min: 15,
+          max: 120,
+          divisions: 7, // 15, 30, 45, 60, 75, 90, 105, 120
+          onChanged: (value) {
+            setState(() => _syncTimeoutSeconds = (value / 15).round() * 15);
+          },
+        ),
+      ],
+    );
+  }
+
   Widget _buildSyncNowButton() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),

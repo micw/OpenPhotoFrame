@@ -132,6 +132,7 @@ class OpenPhotoFrameApp extends StatelessWidget {
                   return ICloudAlbumSyncService(
                     config: icloudConfig,
                     storageProvider: storage,
+                    timeoutSeconds: config.syncTimeoutSeconds,
                   );
                 }
               }

@@ -23,7 +23,10 @@ abstract class ConfigProvider extends ChangeNotifier {
   // Sync settings
   int get syncIntervalMinutes; // 0 = disabled, otherwise interval in minutes
   set syncIntervalMinutes(int value);
-  
+
+  int get syncTimeoutSeconds; // Network timeout for sync requests (default 60)
+  set syncTimeoutSeconds(int value);
+
   bool get deleteOrphanedFiles; // Delete local files not on server
   set deleteOrphanedFiles(bool value);
   

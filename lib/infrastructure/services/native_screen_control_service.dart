@@ -116,7 +116,7 @@ class NativeScreenControlService {
   /// Check if the screen is currently on.
   static Future<bool> isScreenOn() async {
     if (!isSupported) return true;
-    
+
     try {
       final result = await _channel.invokeMethod<bool>('isScreenOn');
       return result ?? true;
@@ -124,5 +124,10 @@ class NativeScreenControlService {
       print('Error checking screen state: $e');
       return true;
     }
+  }
+
+  static Future<void> openWifiSettings() async {
+    if (!isSupported) return;
+    await _channel.invokeMethod('openWifiSettings');
   }
 }

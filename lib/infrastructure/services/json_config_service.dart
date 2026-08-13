@@ -272,12 +272,20 @@ class JsonConfigService extends ConfigProvider {
   // Sync settings
   @override
   int get syncIntervalMinutes => _config['sync_interval_minutes'] ?? 15;
-  
+
   @override
   set syncIntervalMinutes(int value) {
     _config['sync_interval_minutes'] = value;
   }
-  
+
+  @override
+  int get syncTimeoutSeconds => _config['sync_timeout_seconds'] ?? 60;
+
+  @override
+  set syncTimeoutSeconds(int value) {
+    _config['sync_timeout_seconds'] = value;
+  }
+
   @override
   bool get deleteOrphanedFiles => _config['delete_orphaned_files'] ?? true;
   
