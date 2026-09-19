@@ -70,7 +70,8 @@ elif "${ADB}" -s "${SERIAL}" shell true >/dev/null 2>&1; then
   warn "Wi-Fi unavailable; using USB. Re-enabling TCP mode..."
   "${ADB}" -s "${SERIAL}" tcpip "${PORT}" >/dev/null 2>&1
   sleep 4
-  if "${ADB}" connect "${IP}:${PORT}" 2>&1 | grep -q connected; then
+  conn=$("${ADB}" connect "${IP}:${PORT}" 2>&1)
+  if [ "${conn#*connected}" != "${conn}" ]; then
     DEV="${IP}:${PORT}"
     ok "Wi-Fi ADB re-enabled at ${DEV} — you can unplug USB"
   else
@@ -134,14 +135,29 @@ if [ "${DO_INSTALL}" -eq 1 ]; then
     bad "Not found. Build first: flutter build apk --release"
     exit 1
   fi
-  if ! unzip -l "${APK}" | grep -q 'lib/armeabi-v7a'; then
+  abis=$(unzip -l "${APK}" | grep -o 'lib/[^/]*' | sort -u)
+  if [ "${abis#*armeabi-v7a}" = "${abis}" ]; then
     bad "APK has no armeabi-v7a slice — this frame is 32-bit only and cannot run it"
+    bad "found: $(echo "${abis}" | tr '\n' ' ')"
     exit 1
   fi
   ok "armeabi-v7a slice present"
-  if "${ADB}" -s "${DEV}" install -r -g "${APK}" 2>&1 | grep -q Success; then
+  out=$("${ADB}" -s "${DEV}" install -r -g "${APK}" 2>&1)
+  if [ "${out#*Success}" != "${out}" ]; then
     ok "installed"
     sh_ "monkey -p ${PKG} -c android.intent.category.LAUNCHER 1" >/dev/null
+    # On startup the app re-runs enableWifiAdb(), which does `stop adbd; start
+    # adbd` — that drops this very session. Wait for adbd to come back, or the
+    # health checks below all read as empty failures.
+    if [ "${DEV}" = "${IP}:${PORT}" ]; then
+      sleep 10
+      for _ in 1 2 3 4 5 6; do
+        "${ADB}" connect "${IP}:${PORT}" >/dev/null 2>&1
+        "${ADB}" -s "${DEV}" shell true >/dev/null 2>&1 && break
+        sleep 5
+      done
+    fi
+    ok "reconnected after adbd restart"
   else
     bad "install failed — check ro.vendor.custom_recover (see FRAMEO.md)"
     exit 1

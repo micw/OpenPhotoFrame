@@ -43,9 +43,6 @@ abstract class ConfigProvider extends ChangeNotifier {
   bool get wifiAdbEnabled; // Enable WiFi ADB on port 5555 via su on every boot (Android only)
   set wifiAdbEnabled(bool value);
 
-  bool get emmcCacheWarmEnabled; // Preload flagged system files into page cache on boot (device-specific)
-  set emmcCacheWarmEnabled(bool value);
-
   // Auto-update settings (GitHub releases; opt-in, not for Play Store)
   bool get autoUpdateEnabled; // Periodically check GitHub for new releases
   set autoUpdateEnabled(bool value);

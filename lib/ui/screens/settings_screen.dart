@@ -20,7 +20,6 @@ import '../../infrastructure/services/web_server_service.dart';
 import '../../infrastructure/services/webdav_source_config.dart';
 import '../../infrastructure/services/webdav_sync_service.dart';
 import '../../infrastructure/services/autostart_service.dart';
-import '../../infrastructure/services/emmc_cache_warm_service.dart';
 import '../../infrastructure/services/native_screen_control_service.dart';
 import '../../infrastructure/services/keep_alive_service.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -61,7 +60,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   late bool _deleteOrphanedFiles;
   late bool _autostartOnBoot;
   late bool _keepAliveEnabled;
-  late bool _emmcCacheWarmEnabled;
   late bool _autoUpdateEnabled;
   late bool _autoUpdateSilent;
   bool _isDeviceOwner = false;
@@ -140,7 +138,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     _deleteOrphanedFiles = config.deleteOrphanedFiles;
     _autostartOnBoot = config.autostartOnBoot;
     _keepAliveEnabled = config.keepAliveEnabled;
-    _emmcCacheWarmEnabled = config.emmcCacheWarmEnabled;
     _autoUpdateEnabled = config.autoUpdateEnabled;
     _autoUpdateSilent = config.autoUpdateSilent;
     if (Platform.isAndroid) {
@@ -334,7 +331,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     config.deleteOrphanedFiles = _deleteOrphanedFiles;
     config.autostartOnBoot = _autostartOnBoot;
     config.keepAliveEnabled = _keepAliveEnabled;
-    config.emmcCacheWarmEnabled = _emmcCacheWarmEnabled;
     config.autoUpdateEnabled = _autoUpdateEnabled;
     config.autoUpdateSilent = _autoUpdateSilent;
     config.showClock = _showClock;
@@ -367,8 +363,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     // Sync keep alive setting to SharedPreferences for WakeReceiver
     await KeepAliveService.setEnabled(_keepAliveEnabled);
 
-    // Sync eMMC cache warm setting to SharedPreferences for ScreenControlHandler
-    await EmmcCacheWarmService.setEnabled(_emmcCacheWarmEnabled);
     
     if (_syncType == 'nextcloud_link') {
       config.setSourceConfig('nextcloud_link', newWebDavSourceConfig.toMap());
@@ -784,19 +778,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
 
             const SizedBox(height: 8),
 
-            SwitchListTile(
-              title: const Text('Warm system file cache on boot'),
-              subtitle: const Text(
-                'Reads key system files into RAM after boot to reduce crash risk from marginal eMMC sectors. Enable only on affected devices.',
-              ),
-              secondary: const Icon(Icons.memory),
-              value: _emmcCacheWarmEnabled,
-              onChanged: (value) {
-                setState(() => _emmcCacheWarmEnabled = value);
-              },
-            ),
-
-            const SizedBox(height: 8),
             _buildAutoUpdateSection(),
 
             const SizedBox(height: 24),

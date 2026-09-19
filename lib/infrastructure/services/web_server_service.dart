@@ -165,7 +165,6 @@ class WebServerService {
         'autostart_on_boot': _config.autostartOnBoot,
         'keep_alive_enabled': _config.keepAliveEnabled,
         'wifi_adb_enabled': _config.wifiAdbEnabled,
-        'emmc_cache_warm_enabled': _config.emmcCacheWarmEnabled,
         'auto_update_enabled': _config.autoUpdateEnabled,
       };
 
@@ -242,7 +241,6 @@ class WebServerService {
     setBool('autostart_on_boot', (v) => _config.autostartOnBoot = v);
     setBool('keep_alive_enabled', (v) => _config.keepAliveEnabled = v);
     setBool('wifi_adb_enabled', (v) => _config.wifiAdbEnabled = v);
-    setBool('emmc_cache_warm_enabled', (v) => _config.emmcCacheWarmEnabled = v);
     setBool('auto_update_enabled', (v) => _config.autoUpdateEnabled = v);
 
     await _config.save();
@@ -816,10 +814,6 @@ button{padding:10px 20px;border:none;border-radius:6px;cursor:pointer;font-size:
     <input type="checkbox" id="wifi-adb">
   </div>
   <div class="toggle">
-    <span>Warm system file cache on boot<small>Preload key system files into RAM after boot to reduce crash risk from marginal eMMC sectors (device-specific)</small></span>
-    <input type="checkbox" id="emmc-cache-warm">
-  </div>
-  <div class="toggle">
     <span>Automatic updates<small>Check GitHub for new versions</small></span>
     <input type="checkbox" id="auto-update">
   </div>
@@ -934,7 +928,6 @@ function applyConfig(c){
   setCheck('autostart',    c.autostart_on_boot??false);
   setCheck('keep-alive',   c.keep_alive_enabled??false);
   setCheck('wifi-adb',         c.wifi_adb_enabled??true);
-  setCheck('emmc-cache-warm',  c.emmc_cache_warm_enabled??false);
   setCheck('auto-update',      c.auto_update_enabled??false);
 }
 
@@ -1023,7 +1016,6 @@ async function saveSettings(){
     autostart_on_boot:document.getElementById('autostart').checked,
     keep_alive_enabled:document.getElementById('keep-alive').checked,
     wifi_adb_enabled:document.getElementById('wifi-adb').checked,
-    emmc_cache_warm_enabled:document.getElementById('emmc-cache-warm').checked,
     auto_update_enabled:document.getElementById('auto-update').checked,
   };
   try{

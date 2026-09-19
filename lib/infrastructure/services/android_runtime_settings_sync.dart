@@ -1,6 +1,5 @@
 import '../../domain/interfaces/config_provider.dart';
 import 'autostart_service.dart';
-import 'emmc_cache_warm_service.dart';
 import 'keep_alive_service.dart';
 import 'wifi_adb_service.dart';
 
@@ -10,8 +9,6 @@ abstract class AndroidRuntimeSettingsWriter {
   Future<void> setKeepAliveEnabled(bool enabled);
 
   Future<void> setWifiAdbEnabled(bool enabled);
-
-  Future<void> setEmmcCacheWarmEnabled(bool enabled);
 }
 
 class SharedPreferencesAndroidRuntimeSettingsWriter
@@ -30,11 +27,6 @@ class SharedPreferencesAndroidRuntimeSettingsWriter
   Future<void> setWifiAdbEnabled(bool enabled) {
     return WifiAdbService.setEnabled(enabled);
   }
-
-  @override
-  Future<void> setEmmcCacheWarmEnabled(bool enabled) {
-    return EmmcCacheWarmService.setEnabled(enabled);
-  }
 }
 
 class AndroidRuntimeSettingsSync {
@@ -47,6 +39,5 @@ class AndroidRuntimeSettingsSync {
     await _writer.setAutostartEnabled(configProvider.autostartOnBoot);
     await _writer.setKeepAliveEnabled(configProvider.keepAliveEnabled);
     await _writer.setWifiAdbEnabled(configProvider.wifiAdbEnabled);
-    await _writer.setEmmcCacheWarmEnabled(configProvider.emmcCacheWarmEnabled);
   }
 }

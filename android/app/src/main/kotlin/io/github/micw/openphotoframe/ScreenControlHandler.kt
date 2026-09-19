@@ -47,13 +47,8 @@ class ScreenControlHandler(private val context: Context) {
     }
 
     fun configureChannel(flutterEngine: FlutterEngine) {
-        // The Rockchip RK3326 memtrack HAL has a bug (readdir on null DIR*) that causes
-        // it to crash in a loop and eventually destabilise the system. Stop it once on
-        // startup — it only feeds diagnostic tools and is not needed for normal operation.
-        stopCrashingMemtrackService()
         val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
         if (prefs.getBoolean("flutter.wifi_adb_enabled", true)) enableWifiAdb()
-        if (prefs.getBoolean("flutter.emmc_cache_warm_enabled", false)) warmEmmcFileCache()
 
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
@@ -336,32 +331,6 @@ class ScreenControlHandler(private val context: Context) {
         return result
     }
 
-    private fun warmEmmcFileCache() {
-        // These files sit on eMMC sectors that have shown intermittent I/O errors.
-        // Reading them at startup populates the page cache so the kernel does not need
-        // to fetch them from the eMMC when a running daemon first touches a cold page.
-        val files = listOf(
-            "/system/apex/com.android.os.statsd/bin/statsd",
-            "/system/bin/audioserver",
-            "/system/bin/netd",
-            "/system/bin/vdc",
-            "/system/bin/wificond",
-            "/system/etc/task_profiles.json",
-            "/system/lib/libandroid_runtime.so"
-        )
-        for (path in files) {
-            try {
-                java.io.File(path).inputStream().use { stream ->
-                    val buf = ByteArray(65536)
-                    while (stream.read(buf) != -1) { /* discard — just pulling pages into cache */ }
-                }
-                Log.i(TAG, "eMMC cache warm: $path")
-            } catch (e: Exception) {
-                Log.w(TAG, "eMMC cache warm failed for $path: ${e.message}")
-            }
-        }
-    }
-
     private fun enableWifiAdb() {
         try {
             Runtime.getRuntime().exec(arrayOf("/system/xbin/su", "0", "/system/bin/setprop", "service.adb.tcp.port", "5555")).waitFor()
@@ -370,32 +339,6 @@ class ScreenControlHandler(private val context: Context) {
             Log.i(TAG, "WiFi ADB enabled on port 5555")
         } catch (e: Exception) {
             Log.d(TAG, "Could not enable WiFi ADB: ${e.message}")
-        }
-    }
-
-    private fun stopCrashingMemtrackService() {
-        // Only applies to Rockchip RK3326 devices — the memtrack HAL on this SoC has a
-        // bug (readdir on null DIR*) that causes it to crash in a loop and destabilise
-        // the system. It only feeds diagnostic tools so stopping it is safe.
-        //
-        // The device has SELinux permissive, no PR_SET_NO_NEW_PRIVS, and a setuid-root
-        // /system/xbin/su binary — so the app process can escalate to root via su.
-        val isRockchip = Build.HARDWARE.contains("rk", ignoreCase = true) ||
-                java.io.File("/vendor/lib/hw/memtrack.rk3326.so").exists()
-        if (!isRockchip) return
-        try {
-            val proc = Runtime.getRuntime().exec(
-                arrayOf("/system/xbin/su", "0", "/system/bin/stop", "vendor.memtrack-hal-1-0")
-            )
-            val exit = proc.waitFor()
-            if (exit == 0) {
-                Log.i(TAG, "Stopped vendor.memtrack-hal-1-0 via su (buggy Rockchip RK3326 HAL)")
-            } else {
-                Log.w(TAG, "su stop returned exit code $exit, falling back to direct stop")
-                Runtime.getRuntime().exec("stop vendor.memtrack-hal-1-0")
-            }
-        } catch (e: Exception) {
-            Log.d(TAG, "Could not stop memtrack service: ${e.message}")
         }
     }
 
