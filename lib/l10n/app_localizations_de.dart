@@ -108,10 +108,11 @@ class AppLocalizationsDe extends AppLocalizations {
       'Von Apple Photos geteiltem Album synchronisieren';
 
   @override
-  String get icloudAlbumUrl => 'iCloud geteiltes Album URL';
+  String get icloudAlbumUrl => 'iCloud geteilte Album-URLs';
 
   @override
-  String get icloudAlbumUrlHint => 'https://www.icloud.com/photos/…';
+  String get icloudAlbumUrlHint =>
+      'https://www.icloud.com/photos/…\nEin Link pro Zeile';
 
   @override
   String get icloudAlbumUrlInvalid =>

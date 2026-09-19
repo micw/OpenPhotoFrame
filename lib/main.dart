@@ -48,6 +48,12 @@ void main() async {
 
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Slideshow never revisits a photo within hours, so the default 100MB image
+  // cache wastes RAM for zero benefit. Keep 2 slots (current + next) as a
+  // buffer for smooth transitions.
+  PaintingBinding.instance.imageCache.maximumSize = 2;
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 20 * 1024 * 1024;
+
   // Hide Status Bar and Navigation Bar (Immersive Mode)
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
 

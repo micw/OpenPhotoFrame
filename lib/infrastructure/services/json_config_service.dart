@@ -322,6 +322,22 @@ class JsonConfigService extends ConfigProvider {
     _config['keep_alive_enabled'] = value;
   }
 
+  @override
+  bool get wifiAdbEnabled => _config['wifi_adb_enabled'] ?? true;
+
+  @override
+  set wifiAdbEnabled(bool value) {
+    _config['wifi_adb_enabled'] = value;
+  }
+
+  @override
+  bool get emmcCacheWarmEnabled => _config['emmc_cache_warm_enabled'] ?? false;
+
+  @override
+  set emmcCacheWarmEnabled(bool value) {
+    _config['emmc_cache_warm_enabled'] = value;
+  }
+
   // Auto-update settings
   @override
   bool get autoUpdateEnabled => _config['auto_update_enabled'] ?? false;

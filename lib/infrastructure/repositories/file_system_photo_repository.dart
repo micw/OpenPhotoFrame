@@ -123,7 +123,7 @@ class FileSystemPhotoRepository implements PhotoRepository {
             final stat = await file.stat();
             newPhotos.add(PhotoEntry(
               file: file,
-              date: stat.modified,  // File date for shuffle algorithm
+              date: stat.modified,
               sizeBytes: stat.size,
             ));
           }

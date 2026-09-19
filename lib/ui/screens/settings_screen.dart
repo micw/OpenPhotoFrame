@@ -20,6 +20,7 @@ import '../../infrastructure/services/web_server_service.dart';
 import '../../infrastructure/services/webdav_source_config.dart';
 import '../../infrastructure/services/webdav_sync_service.dart';
 import '../../infrastructure/services/autostart_service.dart';
+import '../../infrastructure/services/emmc_cache_warm_service.dart';
 import '../../infrastructure/services/native_screen_control_service.dart';
 import '../../infrastructure/services/keep_alive_service.dart';
 import 'package:permission_handler/permission_handler.dart';
@@ -60,6 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   late bool _deleteOrphanedFiles;
   late bool _autostartOnBoot;
   late bool _keepAliveEnabled;
+  late bool _emmcCacheWarmEnabled;
   late bool _autoUpdateEnabled;
   late bool _autoUpdateSilent;
   bool _isDeviceOwner = false;
@@ -111,11 +113,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   String? _selectedAlbumId;
   bool _isLoadingAlbums = false;
   
-  // Track original values to detect changes
-  late String _originalSyncType;
-  late WebDavSourceConfig _originalWebDavSourceConfig;
-  late String _originalICloudAlbumUrl;
-  
   @override
   void initState() {
     super.initState();
@@ -143,6 +140,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     _deleteOrphanedFiles = config.deleteOrphanedFiles;
     _autostartOnBoot = config.autostartOnBoot;
     _keepAliveEnabled = config.keepAliveEnabled;
+    _emmcCacheWarmEnabled = config.emmcCacheWarmEnabled;
     _autoUpdateEnabled = config.autoUpdateEnabled;
     _autoUpdateSilent = config.autoUpdateSilent;
     if (Platform.isAndroid) {
@@ -223,14 +221,10 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     final icloudConfig = ICloudAlbumSourceConfig.fromMap(
       config.getSourceConfig('icloud_album'),
     );
-    _icloudAlbumUrlController = TextEditingController(text: icloudConfig.albumUrl)
+    _icloudAlbumUrlController =
+        TextEditingController(text: icloudConfig.linksText)
       ..addListener(() => setState(() {}));
 
-    // Store original values for comparison on save
-    _originalSyncType = _syncType;
-    _originalWebDavSourceConfig = nextcloudConfig;
-    _originalICloudAlbumUrl = icloudConfig.albumUrl;
-    
     // Load saved album selection for device_photos mode
     final devicePhotosConfig = config.getSourceConfig('device_photos');
     _selectedAlbumId = devicePhotosConfig['albumId'] as String?;
@@ -316,22 +310,12 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     
     // Detect if sync configuration changed
     final newNextcloudUrl = _nextcloudUrlController.text.trim();
-    final newICloudAlbumUrl = _icloudAlbumUrlController.text.trim();
+    final newICloudAlbumLinks = _icloudAlbumUrlController.text;
+    final newICloudAlbumConfig =
+        ICloudAlbumSourceConfig.fromLinkText(newICloudAlbumLinks);
     final newWebDavSourceConfig = _buildWebDavSourceConfig(
       url: newNextcloudUrl,
     );
-    final nextcloudConfigChanged =
-      !_nextcloudConfigsEqual(newWebDavSourceConfig, _originalWebDavSourceConfig);
-    final icloudConfigChanged = newICloudAlbumUrl != _originalICloudAlbumUrl;
-    final syncConfigChanged =
-      _syncType != _originalSyncType ||
-      (_syncType == 'nextcloud_link' && nextcloudConfigChanged) ||
-      (_syncType == 'icloud_album' && icloudConfigChanged);
-    final newSyncSourceConfigured = syncConfigChanged && (
-        (_syncType == 'nextcloud_link' && newNextcloudUrl.isNotEmpty) ||
-        (_syncType == 'icloud_album' && ICloudAlbumSourceConfig(albumUrl: newICloudAlbumUrl).isValid)
-    );
-    
     config.slideDurationSeconds = _slideDurationSeconds;
     config.transitionDurationMs = (_transitionDurationSeconds * 1000).round();
     config.blurBorders = _blurBorders;
@@ -350,6 +334,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     config.deleteOrphanedFiles = _deleteOrphanedFiles;
     config.autostartOnBoot = _autostartOnBoot;
     config.keepAliveEnabled = _keepAliveEnabled;
+    config.emmcCacheWarmEnabled = _emmcCacheWarmEnabled;
     config.autoUpdateEnabled = _autoUpdateEnabled;
     config.autoUpdateSilent = _autoUpdateSilent;
     config.showClock = _showClock;
@@ -378,9 +363,12 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     
     // Sync autostart setting to SharedPreferences for BootReceiver
     await AutostartService.setEnabled(_autostartOnBoot);
-    
+
     // Sync keep alive setting to SharedPreferences for WakeReceiver
     await KeepAliveService.setEnabled(_keepAliveEnabled);
+
+    // Sync eMMC cache warm setting to SharedPreferences for ScreenControlHandler
+    await EmmcCacheWarmService.setEnabled(_emmcCacheWarmEnabled);
     
     if (_syncType == 'nextcloud_link') {
       config.setSourceConfig('nextcloud_link', newWebDavSourceConfig.toMap());
@@ -388,7 +376,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     if (_syncType == 'icloud_album') {
       config.setSourceConfig(
         'icloud_album',
-        ICloudAlbumSourceConfig(albumUrl: newICloudAlbumUrl).toMap(),
+        newICloudAlbumConfig.toMap(),
       );
     }
 
@@ -399,7 +387,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     final sourceIsConfigured =
         (_syncType == 'nextcloud_link' && newNextcloudUrl.isNotEmpty) ||
         (_syncType == 'icloud_album' &&
-            ICloudAlbumSourceConfig(albumUrl: newICloudAlbumUrl).isValid);
+            newICloudAlbumConfig.isValid);
     if (sourceIsConfigured) {
       final photoService = context.read<PhotoService>();
       photoService.triggerSync(); // fire-and-forget
@@ -707,6 +695,47 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
               trailing: const Icon(Icons.open_in_new, size: 18),
               onTap: () => NativeScreenControlService.openWifiSettings(),
             ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Android Settings'),
+              subtitle: const Text('Open system settings'),
+              trailing: const Icon(Icons.open_in_new, size: 18),
+              onTap: () => NativeScreenControlService.openAndroidSettings(),
+            ),
+            ListTile(
+              leading: const Icon(Icons.code),
+              title: const Text('Developer Options'),
+              subtitle: const Text('ADB, wireless debugging and more'),
+              trailing: const Icon(Icons.open_in_new, size: 18),
+              onTap: () => NativeScreenControlService.openDeveloperSettings(),
+            ),
+            ListTile(
+              leading: const Icon(Icons.restart_alt),
+              title: const Text('Reboot Device'),
+              subtitle: const Text('Restart the device now'),
+              onTap: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Reboot device?'),
+                    content: const Text('The device will restart immediately.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: const Text('Reboot'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed == true) {
+                  await NativeScreenControlService.rebootDevice();
+                }
+              },
+            ),
 
             const SizedBox(height: 8),
 
@@ -750,6 +779,20 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                   }
                 }
                 setState(() => _keepAliveEnabled = value);
+              },
+            ),
+
+            const SizedBox(height: 8),
+
+            SwitchListTile(
+              title: const Text('Warm system file cache on boot'),
+              subtitle: const Text(
+                'Reads key system files into RAM after boot to reduce crash risk from marginal eMMC sectors. Enable only on affected devices.',
+              ),
+              secondary: const Icon(Icons.memory),
+              value: _emmcCacheWarmEnabled,
+              onChanged: (value) {
+                setState(() => _emmcCacheWarmEnabled = value);
               },
             ),
 
@@ -986,6 +1029,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           const SizedBox(height: 8),
           TextField(
             controller: _icloudAlbumUrlController,
+            maxLines: null,
             decoration: InputDecoration(
               hintText: l10n.icloudAlbumUrlHint,
               border: const OutlineInputBorder(),
@@ -994,15 +1038,24 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           ),
           const SizedBox(height: 4),
           Builder(builder: (ctx) {
-            final url = _icloudAlbumUrlController.text.trim();
-            final valid = url.isEmpty ||
-                ICloudAlbumSourceConfig(albumUrl: url).isValid;
-            return valid
-                ? const SizedBox.shrink()
-                : Text(l10n.icloudAlbumUrlInvalid,
+            final invalidLinks = ICloudAlbumSourceConfig
+                .fromLinkText(_icloudAlbumUrlController.text)
+                .invalidLinks;
+            if (invalidLinks.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.icloudAlbumUrlInvalid,
                     style: TextStyle(
                         color: Theme.of(ctx).colorScheme.error,
-                        fontSize: 12));
+                        fontSize: 12)),
+                for (final link in invalidLinks)
+                  Text(link,
+                      style: TextStyle(
+                          color: Theme.of(ctx).colorScheme.error,
+                          fontSize: 11)),
+              ],
+            );
           }),
         ],
       ),
@@ -1694,34 +1747,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     );
   }
 
-  bool _nextcloudConfigsEqual(
-    WebDavSourceConfig left,
-    WebDavSourceConfig right,
-  ) {
-    final leftFolders = left.normalizedSelectedFolders.toList()..sort();
-    final rightFolders = right.normalizedSelectedFolders.toList()..sort();
-
-    if (left.url != right.url ||
-        left.authMode != right.authMode ||
-        left.username != right.username ||
-        left.password != right.password ||
-        left.allowInvalidCertificate != right.allowInvalidCertificate ||
-        left.folderSyncMode != right.folderSyncMode) {
-      return false;
-    }
-
-    if (leftFolders.length != rightFolders.length) {
-      return false;
-    }
-
-    for (var index = 0; index < leftFolders.length; index++) {
-      if (leftFolders[index] != rightFolders[index]) {
-        return false;
-      }
-    }
-
-    return true;
-  }
   
   Widget _buildSyncIntervalSlider() {
     // Values: 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60

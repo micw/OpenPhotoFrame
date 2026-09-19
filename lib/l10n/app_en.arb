@@ -36,8 +36,8 @@
   "localFolderSubtitle": "Use photos from a local folder",
   "icloudAlbum": "iCloud Shared Album",
   "icloudAlbumSubtitle": "Sync from Apple Photos shared album",
-  "icloudAlbumUrl": "iCloud Shared Album URL",
-  "icloudAlbumUrlHint": "https://www.icloud.com/photos/…",
+  "icloudAlbumUrl": "iCloud Shared Album URL(s)",
+  "icloudAlbumUrlHint": "https://www.icloud.com/photos/…\nOne link per line",
   "icloudAlbumUrlInvalid": "Enter a valid icloud.com/photos shared album URL",
   "webSettingsAddress": "Web settings available at {url}",
   "@webSettingsAddress": {

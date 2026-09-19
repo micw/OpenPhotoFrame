@@ -287,13 +287,13 @@ abstract class AppLocalizations {
   /// No description provided for @icloudAlbumUrl.
   ///
   /// In en, this message translates to:
-  /// **'iCloud Shared Album URL'**
+  /// **'iCloud Shared Album URL(s)'**
   String get icloudAlbumUrl;
 
   /// No description provided for @icloudAlbumUrlHint.
   ///
   /// In en, this message translates to:
-  /// **'https://www.icloud.com/photos/…'**
+  /// **'https://www.icloud.com/photos/…\nOne link per line'**
   String get icloudAlbumUrlHint;
 
   /// No description provided for @icloudAlbumUrlInvalid.

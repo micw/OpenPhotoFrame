@@ -1,6 +1,8 @@
 package io.github.micw.openphotoframe
 
+import android.app.ActivityManager
 import android.app.AlarmManager
+import android.os.Debug
 import android.app.PendingIntent
 import android.app.admin.DevicePolicyManager
 import android.content.ComponentName
@@ -45,6 +47,14 @@ class ScreenControlHandler(private val context: Context) {
     }
 
     fun configureChannel(flutterEngine: FlutterEngine) {
+        // The Rockchip RK3326 memtrack HAL has a bug (readdir on null DIR*) that causes
+        // it to crash in a loop and eventually destabilise the system. Stop it once on
+        // startup — it only feeds diagnostic tools and is not needed for normal operation.
+        stopCrashingMemtrackService()
+        val prefs = context.getSharedPreferences("FlutterSharedPreferences", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("flutter.wifi_adb_enabled", true)) enableWifiAdb()
+        if (prefs.getBoolean("flutter.emmc_cache_warm_enabled", false)) warmEmmcFileCache()
+
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "isDeviceAdminEnabled" -> {
@@ -64,6 +74,28 @@ class ScreenControlHandler(private val context: Context) {
                     }
                     context.startActivity(intent)
                     result.success(null)
+                }
+                "openAndroidSettings" -> {
+                    val intent = Intent(android.provider.Settings.ACTION_SETTINGS).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                    result.success(null)
+                }
+                "openDeveloperSettings" -> {
+                    val intent = Intent(android.provider.Settings.ACTION_APPLICATION_DEVELOPMENT_SETTINGS).apply {
+                        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                    }
+                    context.startActivity(intent)
+                    result.success(null)
+                }
+                "rebootDevice" -> {
+                    try {
+                        Runtime.getRuntime().exec(arrayOf("/system/xbin/su", "0", "/system/bin/reboot"))
+                        result.success(true)
+                    } catch (e: Exception) {
+                        result.error("REBOOT_FAILED", e.message, null)
+                    }
                 }
                 "turnScreenOff" -> {
                     val success = turnScreenOff()
@@ -88,6 +120,12 @@ class ScreenControlHandler(private val context: Context) {
                 }
                 "isScreenOn" -> {
                     result.success(powerManager.isInteractive)
+                }
+                "getMemoryInfo" -> {
+                    result.success(getMemoryInfo())
+                }
+                "getThermalInfo" -> {
+                    result.success(getThermalInfo())
                 }
                 else -> {
                     result.notImplemented()
@@ -217,6 +255,148 @@ class ScreenControlHandler(private val context: Context) {
         
         alarmManager.cancel(pendingIntent)
         Log.d(TAG, "Cancelled scheduled wake-up")
+    }
+
+    /**
+     * Returns Android memory stats for Prometheus metrics.
+     */
+    private fun getMemoryInfo(): Map<String, Long> {
+        val am = context.getSystemService(Context.ACTIVITY_SERVICE) as ActivityManager
+        val memInfo = ActivityManager.MemoryInfo()
+        am.getMemoryInfo(memInfo)
+        val rt = Runtime.getRuntime()
+
+        // Read process CPU ticks from /proc/self/stat.
+        // Fields 14 (utime) and 15 (stime) are in jiffies (1/100s on Android).
+        var cpuJiffies = 0L
+        try {
+            val parts = java.io.File("/proc/self/stat").readText().trim().split(" ")
+            cpuJiffies = parts[13].toLong() + parts[14].toLong()
+        } catch (_: Exception) {}
+
+        val result = mutableMapOf(
+            "system_avail_mem_bytes" to memInfo.availMem,
+            "system_total_mem_bytes" to memInfo.totalMem,
+            "system_low_mem_threshold_bytes" to memInfo.threshold,
+            "system_low_memory" to if (memInfo.lowMemory) 1L else 0L,
+            "jvm_total_bytes" to rt.totalMemory(),
+            "jvm_free_bytes" to rt.freeMemory(),
+            "jvm_max_bytes" to rt.maxMemory(),
+            "process_cpu_jiffies_total" to cpuJiffies,
+            "native_heap_allocated_bytes" to Debug.getNativeHeapAllocatedSize(),
+            "native_heap_size_bytes" to Debug.getNativeHeapSize(),
+        )
+
+        try {
+            val storageDir = context.getExternalFilesDir(null) ?: context.filesDir
+            val fs = android.os.StatFs(storageDir.absolutePath)
+            result["storage_total_bytes"] = fs.totalBytes
+            result["storage_free_bytes"] = fs.freeBytes
+            result["storage_avail_bytes"] = fs.availableBytes
+        } catch (_: Exception) {}
+
+        return result
+    }
+
+    /**
+     * Returns temperatures from all /sys/class/thermal/thermal_zone* sensors.
+     * Keys are the zone type strings (e.g. "cpu", "battery", "gpu").
+     * Values are degrees Celsius as doubles.
+     * If multiple zones share the same type, they are suffixed _1, _2, etc.
+     */
+    private fun getThermalInfo(): Map<String, Double> {
+        val result = mutableMapOf<String, Double>()
+        val thermalDir = java.io.File("/sys/class/thermal")
+        if (!thermalDir.exists()) return result
+
+        thermalDir.listFiles()
+            ?.filter { it.name.startsWith("thermal_zone") }
+            ?.sortedBy { it.name }
+            ?.forEach { zone ->
+                try {
+                    val type = java.io.File(zone, "type").readText().trim()
+                        .replace(Regex("[^a-zA-Z0-9_]"), "_")
+                    val raw = java.io.File(zone, "temp").readText().trim().toLong()
+                    // Most Android devices report millidegrees; a few report degrees directly
+                    val celsius = if (raw > 1000) raw / 1000.0 else raw.toDouble()
+
+                    // Skip sentinel values used for absent/disabled sensors
+                    if (celsius < -200 || celsius > 200) return@forEach
+
+                    // Deduplicate keys if multiple zones share the same type
+                    val key = if (!result.containsKey(type)) type else {
+                        var i = 1
+                        while (result.containsKey("${type}_$i")) i++
+                        "${type}_$i"
+                    }
+                    result[key] = celsius
+                } catch (_: Exception) {}
+            }
+
+        return result
+    }
+
+    private fun warmEmmcFileCache() {
+        // These files sit on eMMC sectors that have shown intermittent I/O errors.
+        // Reading them at startup populates the page cache so the kernel does not need
+        // to fetch them from the eMMC when a running daemon first touches a cold page.
+        val files = listOf(
+            "/system/apex/com.android.os.statsd/bin/statsd",
+            "/system/bin/audioserver",
+            "/system/bin/netd",
+            "/system/bin/vdc",
+            "/system/bin/wificond",
+            "/system/etc/task_profiles.json",
+            "/system/lib/libandroid_runtime.so"
+        )
+        for (path in files) {
+            try {
+                java.io.File(path).inputStream().use { stream ->
+                    val buf = ByteArray(65536)
+                    while (stream.read(buf) != -1) { /* discard — just pulling pages into cache */ }
+                }
+                Log.i(TAG, "eMMC cache warm: $path")
+            } catch (e: Exception) {
+                Log.w(TAG, "eMMC cache warm failed for $path: ${e.message}")
+            }
+        }
+    }
+
+    private fun enableWifiAdb() {
+        try {
+            Runtime.getRuntime().exec(arrayOf("/system/xbin/su", "0", "/system/bin/setprop", "service.adb.tcp.port", "5555")).waitFor()
+            Runtime.getRuntime().exec(arrayOf("/system/xbin/su", "0", "/system/bin/stop", "adbd")).waitFor()
+            Runtime.getRuntime().exec(arrayOf("/system/xbin/su", "0", "/system/bin/start", "adbd"))
+            Log.i(TAG, "WiFi ADB enabled on port 5555")
+        } catch (e: Exception) {
+            Log.d(TAG, "Could not enable WiFi ADB: ${e.message}")
+        }
+    }
+
+    private fun stopCrashingMemtrackService() {
+        // Only applies to Rockchip RK3326 devices — the memtrack HAL on this SoC has a
+        // bug (readdir on null DIR*) that causes it to crash in a loop and destabilise
+        // the system. It only feeds diagnostic tools so stopping it is safe.
+        //
+        // The device has SELinux permissive, no PR_SET_NO_NEW_PRIVS, and a setuid-root
+        // /system/xbin/su binary — so the app process can escalate to root via su.
+        val isRockchip = Build.HARDWARE.contains("rk", ignoreCase = true) ||
+                java.io.File("/vendor/lib/hw/memtrack.rk3326.so").exists()
+        if (!isRockchip) return
+        try {
+            val proc = Runtime.getRuntime().exec(
+                arrayOf("/system/xbin/su", "0", "/system/bin/stop", "vendor.memtrack-hal-1-0")
+            )
+            val exit = proc.waitFor()
+            if (exit == 0) {
+                Log.i(TAG, "Stopped vendor.memtrack-hal-1-0 via su (buggy Rockchip RK3326 HAL)")
+            } else {
+                Log.w(TAG, "su stop returned exit code $exit, falling back to direct stop")
+                Runtime.getRuntime().exec("stop vendor.memtrack-hal-1-0")
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, "Could not stop memtrack service: ${e.message}")
+        }
     }
 
     /**
