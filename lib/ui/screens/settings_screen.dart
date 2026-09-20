@@ -55,6 +55,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   late TextEditingController _webdavPasswordController;
   late bool _webdavAllowInvalidCertificate;
   late TextEditingController _icloudAlbumUrlController;
+  late TextEditingController _webUiPasswordController;
   late int _syncIntervalMinutes;
   late int _syncTimeoutSeconds;
   late bool _deleteOrphanedFiles;
@@ -136,6 +137,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     _syncIntervalMinutes = config.syncIntervalMinutes;
     _syncTimeoutSeconds = config.syncTimeoutSeconds;
     _deleteOrphanedFiles = config.deleteOrphanedFiles;
+    _webUiPasswordController =
+        TextEditingController(text: config.webUiPassword);
     _autostartOnBoot = config.autostartOnBoot;
     _keepAliveEnabled = config.keepAliveEnabled;
     _autoUpdateEnabled = config.autoUpdateEnabled;
@@ -291,6 +294,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     _webdavUserController.dispose();
     _webdavPasswordController.dispose();
     _icloudAlbumUrlController.dispose();
+    _webUiPasswordController.dispose();
     super.dispose();
   }
   
@@ -329,6 +333,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     config.syncIntervalMinutes = _syncIntervalMinutes;
     config.syncTimeoutSeconds = _syncTimeoutSeconds;
     config.deleteOrphanedFiles = _deleteOrphanedFiles;
+    config.webUiPassword = _webUiPasswordController.text.trim();
     config.autostartOnBoot = _autostartOnBoot;
     config.keepAliveEnabled = _keepAliveEnabled;
     config.autoUpdateEnabled = _autoUpdateEnabled;
@@ -774,6 +779,27 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
                 }
                 setState(() => _keepAliveEnabled = value);
               },
+            ),
+
+            const SizedBox(height: 8),
+
+            // On-device escape hatch: if the web UI password is forgotten, it can
+            // always be cleared here.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: TextField(
+                controller: _webUiPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Web UI password',
+                  helperText:
+                      'Protects the web settings page and API. Leave blank to disable. '
+                      'The /metrics endpoint stays open for Prometheus.',
+                  helperMaxLines: 3,
+                  prefixIcon: Icon(Icons.lock_outline),
+                  border: OutlineInputBorder(),
+                ),
+              ),
             ),
 
             const SizedBox(height: 8),

@@ -191,6 +191,36 @@ adb shell cmd package resolve-activity \
   -a android.intent.action.MAIN -c android.intent.category.HOME --brief
 ```
 
+### Web UI password
+
+The settings server binds `0.0.0.0:8080` with `Access-Control-Allow-Origin: *`
+and shipped with no authentication, so anyone on the LAN could read
+`/api/config` and `/api/log` — both of which disclose the iCloud shared-album
+token, which is enough to open the album.
+
+Set a password in the web UI (Android section) or in the on-device settings
+screen. Empty disables authentication. It is HTTP Basic, any username, checked
+against `web_ui_password` in the app config:
+
+```sh
+curl -u admin:PASSWORD http://192.168.0.0:8080/api/config
+```
+
+`/metrics` is deliberately **left open** so Prometheus keeps scraping without
+credentials — it exposes only counters and gauges, no album URLs, tokens or log
+lines. If you want it protected too, add `basic_auth` to the Prometheus scrape
+config and remove the `path != '/metrics'` exemption in `_route`.
+
+Forgotten password: clear it in the on-device settings screen, or over ADB —
+
+```sh
+adb shell "/system/xbin/su 0 sed -i 's/\"web_ui_password\":[^,}]*/\"web_ui_password\":\"\"/' \
+  /data/data/io.github.micw.openphotoframe/app_flutter/config.json"
+```
+
+Note the token is still written to the app log in plaintext, so it remains
+visible to anyone who can authenticate or read the log another way.
+
 ### Wi-Fi ADB and flaky USB
 
 USB on this frame re-enumerates constantly — transport ids climbed past 300 in one

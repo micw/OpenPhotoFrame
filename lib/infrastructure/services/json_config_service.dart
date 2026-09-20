@@ -224,6 +224,14 @@ class JsonConfigService extends ConfigProvider {
   }
 
   @override
+  String get webUiPassword => _config['web_ui_password'] ?? '';
+
+  @override
+  set webUiPassword(String value) {
+    _config['web_ui_password'] = value;
+  }
+
+  @override
   String get activeSourceType => _config['active_source'] ?? '';
   
   @override

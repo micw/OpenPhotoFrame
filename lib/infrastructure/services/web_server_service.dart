@@ -102,6 +102,15 @@ class WebServerService {
       return;
     }
 
+    // /metrics stays open so Prometheus keeps scraping without credentials. It
+    // exposes only counters and gauges — no album URLs, tokens or log lines.
+    // Everything else, including /api/config and /api/log, requires the password
+    // when one is set.
+    if (path != '/metrics' && !_isAuthorized(request)) {
+      _sendUnauthorized(request);
+      return;
+    }
+
     if (method == 'GET' && path == '/') {
       _sendHtml(request, _settingsPage);
     } else if (method == 'GET' && path == '/api/config') {
@@ -121,6 +130,54 @@ class WebServerService {
     } else {
       _sendError(request, 404, 'Not found');
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Authentication
+  // ---------------------------------------------------------------------------
+
+  /// HTTP Basic auth against [ConfigProvider.webUiPassword]. Any username is
+  /// accepted — only the password is checked. An empty configured password
+  /// disables authentication entirely.
+  bool _isAuthorized(HttpRequest request) {
+    final expected = _config.webUiPassword;
+    if (expected.isEmpty) return true;
+
+    final header = request.headers.value(HttpHeaders.authorizationHeader);
+    if (header == null || !header.toLowerCase().startsWith('basic ')) return false;
+
+    String decoded;
+    try {
+      decoded = utf8.decode(base64.decode(header.substring(6).trim()));
+    } catch (_) {
+      return false;
+    }
+    final sep = decoded.indexOf(':');
+    if (sep < 0) return false;
+
+    return _constantTimeEquals(decoded.substring(sep + 1), expected);
+  }
+
+  /// Compares without leaking length or position through timing. Not critical on
+  /// a LAN device, but cheap.
+  static bool _constantTimeEquals(String a, String b) {
+    final ab = utf8.encode(a);
+    final bb = utf8.encode(b);
+    var diff = ab.length ^ bb.length;
+    for (var i = 0; i < ab.length && i < bb.length; i++) {
+      diff |= ab[i] ^ bb[i];
+    }
+    return diff == 0;
+  }
+
+  void _sendUnauthorized(HttpRequest request) {
+    request.response
+      ..statusCode = HttpStatus.unauthorized
+      ..headers.set(HttpHeaders.wwwAuthenticateHeader,
+          'Basic realm="OpenPhotoFrame", charset="UTF-8"')
+      ..headers.contentType = ContentType.text
+      ..write('Unauthorized');
+    request.response.close();
   }
 
   // ---------------------------------------------------------------------------
@@ -165,6 +222,7 @@ class WebServerService {
         'autostart_on_boot': _config.autostartOnBoot,
         'keep_alive_enabled': _config.keepAliveEnabled,
         'wifi_adb_enabled': _config.wifiAdbEnabled,
+        'web_ui_password': _config.webUiPassword,
         'auto_update_enabled': _config.autoUpdateEnabled,
       };
 
@@ -241,6 +299,7 @@ class WebServerService {
     setBool('autostart_on_boot', (v) => _config.autostartOnBoot = v);
     setBool('keep_alive_enabled', (v) => _config.keepAliveEnabled = v);
     setBool('wifi_adb_enabled', (v) => _config.wifiAdbEnabled = v);
+    setString('web_ui_password', (v) => _config.webUiPassword = v);
     setBool('auto_update_enabled', (v) => _config.autoUpdateEnabled = v);
 
     await _config.save();
@@ -817,6 +876,10 @@ button{padding:10px 20px;border:none;border-radius:6px;cursor:pointer;font-size:
     <span>Automatic updates<small>Check GitHub for new versions</small></span>
     <input type="checkbox" id="auto-update">
   </div>
+  <div class="row">
+    <label for="web-ui-password">Web UI password<small>Protects this page and the API. Leave blank to disable. /metrics stays open for Prometheus.</small></label>
+    <input type="password" id="web-ui-password" autocomplete="new-password" placeholder="(no password)">
+  </div>
 </section>
 
 <!-- ACTIONS -->
@@ -927,6 +990,7 @@ function applyConfig(c){
   // Android
   setCheck('autostart',    c.autostart_on_boot??false);
   setCheck('keep-alive',   c.keep_alive_enabled??false);
+  document.getElementById('web-ui-password').value=c.web_ui_password??'';
   setCheck('wifi-adb',         c.wifi_adb_enabled??true);
   setCheck('auto-update',      c.auto_update_enabled??false);
 }
@@ -1016,6 +1080,7 @@ async function saveSettings(){
     autostart_on_boot:document.getElementById('autostart').checked,
     keep_alive_enabled:document.getElementById('keep-alive').checked,
     wifi_adb_enabled:document.getElementById('wifi-adb').checked,
+    web_ui_password:document.getElementById('web-ui-password').value,
     auto_update_enabled:document.getElementById('auto-update').checked,
   };
   try{
