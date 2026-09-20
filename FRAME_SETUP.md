@@ -6,7 +6,7 @@
 adb devices -l
 ```
 
-Note the device serial (e.g. `SERIAL_REDACTED`). Use `-s <serial>` in all commands below if multiple devices are connected.
+Note the device serial reported by `adb devices`. Use `-s <serial>` in all commands below if multiple devices are connected.
 
 ## 2. Install the APK
 

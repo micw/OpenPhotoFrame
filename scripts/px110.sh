@@ -10,15 +10,30 @@
 #   ./scripts/px110.sh --health     # report only, change nothing
 #   ./scripts/px110.sh --install    # also install the release APK
 #
-# Override the defaults with env vars, e.g. FRAME_IP=192.168.0.0 ./scripts/px110.sh
+# The device's serial and LAN address are read from scripts/frame.env, which is
+# gitignored so they stay out of this public repository:
+#
+#   cp scripts/frame.env.example scripts/frame.env   # then fill it in
+#
+# Environment variables win over the file, e.g. FRAME_IP=10.0.0.5 ./scripts/px110.sh
 #
 # See FRAMEO.md for why each step exists.
 
 set -uo pipefail
 
+HERE="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=/dev/null
+[ -f "${HERE}/frame.env" ] && . "${HERE}/frame.env"
+
 ADB="${ADB:-$HOME/Library/Android/sdk/platform-tools/adb}"
-SERIAL="${FRAME_SERIAL:-FRAME_SERIAL_REDACTED}"
-IP="${FRAME_IP:-192.168.0.0}"
+SERIAL="${FRAME_SERIAL:-}"
+IP="${FRAME_IP:-}"
+
+if [ -z "${SERIAL}" ] || [ -z "${IP}" ]; then
+  echo "FRAME_SERIAL and FRAME_IP are not set." >&2
+  echo "Create ${HERE}/frame.env from frame.env.example, or pass them as env vars." >&2
+  exit 2
+fi
 PORT=5555
 PKG=io.github.micw.openphotoframe
 APK="build/app/outputs/flutter-apk/app-release.apk"

@@ -12,8 +12,8 @@ failure and went back to Amazon; what still transfers is kept at the
 | SoC | MediaTek MT8167, **32-bit only** (`armeabi-v7a`) |
 | Android | 11, user build, `ro.debuggable=0`, SELinux **permissive** |
 | RAM / storage | 2 GB / 26 GB `/data` |
-| USB serial | `FRAME_SERIAL_REDACTED` |
-| IP | 192.168.0.0 (was .141 — it moves on DHCP, check before assuming) |
+| USB serial | in `scripts/frame.env` (gitignored) |
+| IP | in `scripts/frame.env` (gitignored); it moves on DHCP, so check before assuming |
 
 Root works despite `ro.debuggable=0`, because `/system/xbin/su` is setuid root and
 SELinux is permissive:
@@ -203,7 +203,7 @@ screen. Empty disables authentication. It is HTTP Basic, any username, checked
 against `web_ui_password` in the app config:
 
 ```sh
-curl -u admin:PASSWORD http://192.168.0.0:8080/api/config
+curl -u admin:PASSWORD http://$FRAME_IP:8080/api/config
 ```
 
 `/metrics` is deliberately **left open** so Prometheus keeps scraping without
@@ -233,21 +233,21 @@ re-runs `setprop service.adb.tcp.port 5555` and restarts `adbd` at boot. A cold 
 reaches photos in about 30 seconds with Wi-Fi ADB already back. Manual setup:
 
 ```sh
-adb -s FRAME_SERIAL_REDACTED tcpip 5555
-adb connect 192.168.0.0:5555
+adb -s "$FRAME_SERIAL" tcpip 5555
+adb connect "$FRAME_IP:5555"
 ```
 
 ### ADB quick reference
 
 ```sh
 # Wi-Fi (preferred — USB is unreliable)
-adb -s 192.168.0.0:5555 shell
+adb -s "$FRAME_IP:5555" shell
 
 # Deploy (needs the install lock cleared first)
-adb -s 192.168.0.0:5555 install -r -g build/app/outputs/flutter-apk/app-release.apk
+adb -s "$FRAME_IP:5555" install -r -g build/app/outputs/flutter-apk/app-release.apk
 
 # Metrics without adb
-curl -s http://192.168.0.0:8080/metrics | grep ^opf_uptime_seconds
+curl -s http://$FRAME_IP:8080/metrics | grep ^opf_uptime_seconds
 ```
 
 ### The 2026-09-19 respawn-loop outage
@@ -299,7 +299,7 @@ Diagnostic notes for next time:
 
 ## Previous device: Frameo 106K (retired)
 
-Rockchip RK3326, Android 11, USB serial `SERIAL_REDACTED`. Returned to Amazon after
+Rockchip RK3326, Android 11. Returned to Amazon after
 progressive eMMC failure. Kept for the parts that transfer.
 
 **eMMC failure is a known failure mode for these frames.** Bad sectors appeared first
