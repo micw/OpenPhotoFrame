@@ -34,6 +34,20 @@
   "devicePhotosSubtitle": "Fotos vom Gerät anzeigen",
   "localFolder": "Lokaler Ordner",
   "localFolderSubtitle": "Fotos aus einem lokalen Ordner verwenden",
+  "icloudAlbum": "iCloud Geteiltes Album",
+  "icloudAlbumSubtitle": "Von Apple Photos geteiltem Album synchronisieren",
+  "icloudAlbumUrl": "iCloud geteilte Album-URLs",
+  "icloudAlbumUrlHint": "https://www.icloud.com/photos/…\nEin Link pro Zeile",
+  "icloudAlbumUrlInvalid": "Bitte eine gültige icloud.com/photos-URL eingeben",
+  "webSettingsAddress": "Web-Einstellungen verfügbar unter {url}",
+  "@webSettingsAddress": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+
   "nextcloud": "Nextcloud",
   "nextcloudSubtitle": "Von Nextcloud öffentlichem Link synchronisieren",
   "loading": "Lädt...",

@@ -16,6 +16,7 @@ class PhotoEntry {
   // Runtime properties (not persisted)
   double weight = 0;
   DateTime? lastShown;
+  int displayCount = 0;
 
   PhotoEntry({
     required this.file,

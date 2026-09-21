@@ -18,9 +18,9 @@ class GeocodingService {
   /// User-Agent required by Nominatim usage policy
   static const String _userAgent = 'OpenPhotoFrame/1.0';
   
-  /// Prefix for SharedPreferences keys
-  static const String _prefsPrefix = 'geocache_';
-  static const String _prefsTsPrefix = 'geocache_ts_';
+  /// Prefix for SharedPreferences keys (v2 = city-only format)
+  static const String _prefsPrefix = 'geocache_v2_';
+  static const String _prefsTsPrefix = 'geocache_v2_ts_';
   
   /// Maximum age for cache entries (3 months)
   static const Duration _maxCacheAge = Duration(days: 90);
@@ -108,26 +108,13 @@ class GeocodingService {
         return null;
       }
       
-      // Build location string: City, State, Country
-      final parts = <String>[];
-      
-      // City (try multiple fields)
-      final city = address['city'] ?? 
-                   address['town'] ?? 
-                   address['village'] ?? 
+      // Build location string: city only
+      final city = address['city'] ??
+                   address['town'] ??
+                   address['village'] ??
                    address['municipality'] ??
                    address['county'];
-      if (city != null) parts.add(city.toString());
-      
-      // State/Region
-      final state = address['state'];
-      if (state != null) parts.add(state.toString());
-      
-      // Country
-      final country = address['country'];
-      if (country != null) parts.add(country.toString());
-      
-      final result = parts.isNotEmpty ? parts.join(', ') : null;
+      final result = city?.toString();
       await _cacheResult(cacheKey, result);
       
       _log.fine('Geocoded ($latitude, $longitude) → $result');

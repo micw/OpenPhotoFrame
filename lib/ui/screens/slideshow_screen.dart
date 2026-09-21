@@ -802,13 +802,16 @@ class _SlideshowScreenState extends State<SlideshowScreen> with TickerProviderSt
     config.addListener(_onConfigChanged);
   }
 
-  /// Handle config changes for Keep Alive service
+  /// Handle config changes
   void _onConfigChanged() {
+    if (!mounted) return;
     final config = context.read<ConfigProvider>();
-    final shouldRun = config.keepAliveEnabled;
-    
-    // Start or stop service based on config
-    if (shouldRun) {
+
+    // Restart timer so any slide duration change takes effect immediately
+    _startTimer();
+
+    // Start or stop keep alive service
+    if (config.keepAliveEnabled) {
       KeepAliveService.startService();
     } else {
       KeepAliveService.stopService();

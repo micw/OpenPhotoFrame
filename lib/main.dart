@@ -15,10 +15,13 @@ import 'domain/interfaces/display_controller.dart';
 import 'infrastructure/services/app_initializer.dart';
 import 'infrastructure/services/json_config_service.dart';
 import 'infrastructure/services/exif_metadata_provider.dart';
+import 'infrastructure/services/icloud_album_source_config.dart';
+import 'infrastructure/services/icloud_album_sync_service.dart';
 import 'infrastructure/services/webdav_source_config.dart';
 import 'infrastructure/services/webdav_sync_service.dart';
 import 'infrastructure/services/noop_sync_service.dart';
 import 'infrastructure/services/photo_service.dart';
+import 'infrastructure/services/web_server_service.dart';
 import 'infrastructure/services/local_storage_provider.dart';
 import 'infrastructure/services/native_display_controller.dart';
 import 'infrastructure/services/update_service.dart';
@@ -44,6 +47,12 @@ void main() async {
   });
 
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Slideshow never revisits a photo within hours, so the default 100MB image
+  // cache wastes RAM for zero benefit. Keep 2 slots (current + next) as a
+  // buffer for smooth transitions.
+  PaintingBinding.instance.imageCache.maximumSize = 2;
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 20 * 1024 * 1024;
 
   // Hide Status Bar and Navigation Bar (Immersive Mode)
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
@@ -123,6 +132,15 @@ class OpenPhotoFrameApp extends StatelessWidget {
                 if (webdavConfig.url.isNotEmpty) {
                   return WebDavSyncService.fromConfig(webdavConfig, storage);
                 }
+              } else if (type == 'icloud_album') {
+                final icloudConfig = ICloudAlbumSourceConfig.fromMap(sourceConfig);
+                if (icloudConfig.isValid) {
+                  return ICloudAlbumSyncService(
+                    config: icloudConfig,
+                    storageProvider: storage,
+                    timeoutSeconds: config.syncTimeoutSeconds,
+                  );
+                }
               }
 
               return NoOpSyncService();
@@ -136,6 +154,21 @@ class OpenPhotoFrameApp extends StatelessWidget {
               storageProvider: storage,
             );
           },
+        ),
+
+        // Web settings UI — accessible from any browser on the LAN at port 8080
+        Provider<WebServerService>(
+          lazy: false,
+          create: (context) {
+            final service = WebServerService(
+              configProvider: context.read<ConfigProvider>(),
+              photoService: context.read<PhotoService>(),
+              storageProvider: context.read<StorageProvider>(),
+            );
+            service.start();
+            return service;
+          },
+          dispose: (_, service) => service.stop(),
         ),
 
         // Opt-in GitHub self-updater (no-op unless enabled in settings)

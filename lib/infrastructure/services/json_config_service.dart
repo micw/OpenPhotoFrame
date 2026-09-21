@@ -224,6 +224,14 @@ class JsonConfigService extends ConfigProvider {
   }
 
   @override
+  String get webUiPassword => _config['web_ui_password'] ?? '';
+
+  @override
+  set webUiPassword(String value) {
+    _config['web_ui_password'] = value;
+  }
+
+  @override
   String get activeSourceType => _config['active_source'] ?? '';
   
   @override
@@ -272,12 +280,20 @@ class JsonConfigService extends ConfigProvider {
   // Sync settings
   @override
   int get syncIntervalMinutes => _config['sync_interval_minutes'] ?? 15;
-  
+
   @override
   set syncIntervalMinutes(int value) {
     _config['sync_interval_minutes'] = value;
   }
-  
+
+  @override
+  int get syncTimeoutSeconds => _config['sync_timeout_seconds'] ?? 60;
+
+  @override
+  set syncTimeoutSeconds(int value) {
+    _config['sync_timeout_seconds'] = value;
+  }
+
   @override
   bool get deleteOrphanedFiles => _config['delete_orphaned_files'] ?? true;
   
@@ -312,6 +328,14 @@ class JsonConfigService extends ConfigProvider {
   @override
   set keepAliveEnabled(bool value) {
     _config['keep_alive_enabled'] = value;
+  }
+
+  @override
+  bool get wifiAdbEnabled => _config['wifi_adb_enabled'] ?? true;
+
+  @override
+  set wifiAdbEnabled(bool value) {
+    _config['wifi_adb_enabled'] = value;
   }
 
   // Auto-update settings

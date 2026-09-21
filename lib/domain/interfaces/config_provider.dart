@@ -23,7 +23,10 @@ abstract class ConfigProvider extends ChangeNotifier {
   // Sync settings
   int get syncIntervalMinutes; // 0 = disabled, otherwise interval in minutes
   set syncIntervalMinutes(int value);
-  
+
+  int get syncTimeoutSeconds; // Network timeout for sync requests (default 60)
+  set syncTimeoutSeconds(int value);
+
   bool get deleteOrphanedFiles; // Delete local files not on server
   set deleteOrphanedFiles(bool value);
   
@@ -36,6 +39,12 @@ abstract class ConfigProvider extends ChangeNotifier {
   
   bool get keepAliveEnabled; // Keep app running with foreground service (Android only)
   set keepAliveEnabled(bool value);
+
+  bool get wifiAdbEnabled; // Enable WiFi ADB on port 5555 via su on every boot (Android only)
+  set wifiAdbEnabled(bool value);
+
+  String get webUiPassword; // Password for the web settings UI; empty disables authentication
+  set webUiPassword(String value);
 
   // Auto-update settings (GitHub releases; opt-in, not for Play Store)
   bool get autoUpdateEnabled; // Periodically check GitHub for new releases

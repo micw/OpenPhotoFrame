@@ -58,6 +58,12 @@ class PhotoService extends ChangeNotifier {
   // Directory change subscription
   StreamSubscription? _directoryChangeSubscription;
 
+  // Metrics
+  int _photoDisplayCount = 0;
+  DateTime? _lastPhotoShownAt;
+  int _syncErrorCount = 0;
+  int _syncCount = 0;
+
   PhotoService({
     required SyncProviderFactory syncProviderFactory,
     required PlaylistStrategy playlistStrategy,
@@ -76,6 +82,12 @@ class PhotoService extends ChangeNotifier {
   bool get isSyncing => _isSyncing;
   SyncProgress? get syncProgress => _syncProgress;
   SyncStatus? get syncStatus => _syncStatus;
+  int get photoCount => _repository.photos.length;
+  int get photoDisplayCount => _photoDisplayCount;
+  DateTime? get lastPhotoShownAt => _lastPhotoShownAt;
+  int get syncErrorCount => _syncErrorCount;
+  int get syncCount => _syncCount;
+  List<PhotoEntry> get allPhotos => _repository.photos;
 
   Future<void> initialize() async {
     if (_isInitialized) return;
@@ -243,7 +255,7 @@ class PhotoService extends ChangeNotifier {
       // Save timestamp of successful sync
       _configProvider.lastSuccessfulSync = DateTime.now();
       await _configProvider.save();
-      
+      _syncCount++;
       _log.info("Sync completed successfully");
       _updateSyncState(status: const SyncStatus.success());
       // Repository watcher will pick up changes automatically
@@ -252,6 +264,7 @@ class PhotoService extends ChangeNotifier {
         _log.info("Sync was cancelled");
         _updateSyncState(status: const SyncStatus.cancelled());
       } else {
+        _syncErrorCount++;
         _log.warning("Sync failed", e, stackTrace);
         _updateSyncState(status: SyncStatus.error(e));
         rethrow;
@@ -277,6 +290,9 @@ class PhotoService extends ChangeNotifier {
     
     if (photo != null) {
       photo.lastShown = DateTime.now();
+      photo.displayCount++;
+      _lastPhotoShownAt = photo.lastShown;
+      _photoDisplayCount++;
       _history.add(photo);
       _historyIndex++;
       

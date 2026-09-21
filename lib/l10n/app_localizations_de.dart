@@ -101,6 +101,29 @@ class AppLocalizationsDe extends AppLocalizations {
   String get localFolderSubtitle => 'Fotos aus einem lokalen Ordner verwenden';
 
   @override
+  String get icloudAlbum => 'iCloud Geteiltes Album';
+
+  @override
+  String get icloudAlbumSubtitle =>
+      'Von Apple Photos geteiltem Album synchronisieren';
+
+  @override
+  String get icloudAlbumUrl => 'iCloud geteilte Album-URLs';
+
+  @override
+  String get icloudAlbumUrlHint =>
+      'https://www.icloud.com/photos/…\nEin Link pro Zeile';
+
+  @override
+  String get icloudAlbumUrlInvalid =>
+      'Bitte eine gültige icloud.com/photos-URL eingeben';
+
+  @override
+  String webSettingsAddress(String url) {
+    return 'Web-Einstellungen verfügbar unter $url';
+  }
+
+  @override
   String get nextcloud => 'Nextcloud';
 
   @override

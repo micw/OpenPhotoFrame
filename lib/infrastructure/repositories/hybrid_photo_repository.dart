@@ -166,7 +166,7 @@ class HybridPhotoRepository implements PhotoRepository {
             final stat = await file.stat();
             newPhotos.add(PhotoEntry(
               file: file,
-              date: stat.modified,  // File date for shuffle algorithm
+              date: stat.modified,
               sizeBytes: stat.size,
             ));
           }
@@ -289,8 +289,8 @@ class HybridPhotoRepository implements PhotoRepository {
           // For MediaStore: modifiedDateTime for shuffle, createDateTime as captureDate
           final entry = PhotoEntry(
             file: file,
-            date: asset.modifiedDateTime,  // File date for shuffle algorithm
-            sizeBytes: asset.width * asset.height,  // Approximate size from dimensions
+            date: asset.modifiedDateTime,
+            sizeBytes: asset.width * asset.height,
           );
           // Set EXIF data from MediaStore (already available, no need for lazy loading)
           entry.setExifMetadata(

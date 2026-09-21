@@ -116,13 +116,53 @@ class NativeScreenControlService {
   /// Check if the screen is currently on.
   static Future<bool> isScreenOn() async {
     if (!isSupported) return true;
-    
+
     try {
       final result = await _channel.invokeMethod<bool>('isScreenOn');
       return result ?? true;
     } catch (e) {
       print('Error checking screen state: $e');
       return true;
+    }
+  }
+
+  static Future<void> openWifiSettings() async {
+    if (!isSupported) return;
+    await _channel.invokeMethod('openWifiSettings');
+  }
+
+  static Future<void> openAndroidSettings() async {
+    if (!isSupported) return;
+    await _channel.invokeMethod('openAndroidSettings');
+  }
+
+  static Future<void> openDeveloperSettings() async {
+    if (!isSupported) return;
+    await _channel.invokeMethod('openDeveloperSettings');
+  }
+
+  static Future<void> rebootDevice() async {
+    if (!isSupported) return;
+    await _channel.invokeMethod('rebootDevice');
+  }
+
+  static Future<Map<String, int>> getMemoryInfo() async {
+    if (!isSupported) return {};
+    try {
+      final result = await _channel.invokeMapMethod<String, int>('getMemoryInfo');
+      return result ?? {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  static Future<Map<String, double>> getThermalInfo() async {
+    if (!isSupported) return {};
+    try {
+      final result = await _channel.invokeMapMethod<String, double>('getThermalInfo');
+      return result ?? {};
+    } catch (e) {
+      return {};
     }
   }
 }

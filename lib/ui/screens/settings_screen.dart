@@ -15,6 +15,8 @@ import '../../infrastructure/repositories/hybrid_photo_repository.dart';
 import '../../infrastructure/services/photo_service.dart';
 import '../../infrastructure/services/native_updater_service.dart';
 import '../../infrastructure/services/update_service.dart';
+import '../../infrastructure/services/icloud_album_source_config.dart';
+import '../../infrastructure/services/web_server_service.dart';
 import '../../infrastructure/services/webdav_source_config.dart';
 import '../../infrastructure/services/webdav_sync_service.dart';
 import '../../infrastructure/services/autostart_service.dart';
@@ -43,7 +45,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     minute: 0,
   );
 
-  late int _slideDurationMinutes;
+  late int _slideDurationSeconds;
   late double _transitionDurationSeconds;
   late bool _blurBorders;
   late String _syncType;
@@ -52,7 +54,10 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   late TextEditingController _webdavUserController;
   late TextEditingController _webdavPasswordController;
   late bool _webdavAllowInvalidCertificate;
+  late TextEditingController _icloudAlbumUrlController;
+  late TextEditingController _webUiPasswordController;
   late int _syncIntervalMinutes;
+  late int _syncTimeoutSeconds;
   late bool _deleteOrphanedFiles;
   late bool _autostartOnBoot;
   late bool _keepAliveEnabled;
@@ -107,10 +112,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
   String? _selectedAlbumId;
   bool _isLoadingAlbums = false;
   
-  // Track original values to detect changes
-  late String _originalSyncType;
-  late WebDavSourceConfig _originalWebDavSourceConfig;
-  
   @override
   void initState() {
     super.initState();
@@ -126,7 +127,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     
     final config = context.read<ConfigProvider>();
-    _slideDurationMinutes = (config.slideDurationSeconds / 60).round().clamp(1, 15);
+    _slideDurationSeconds = config.slideDurationSeconds.clamp(10, 3600);
     _transitionDurationSeconds = (config.transitionDurationMs / 1000.0).clamp(0.5, 5.0);
     _blurBorders = config.blurBorders;
     // Default sync type: app_folder on Android, local_folder on Desktop
@@ -134,7 +135,10 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     _syncType = config.activeSourceType.isEmpty ? defaultSyncType : config.activeSourceType;
     _localFolderPath = config.customPhotoPath ?? '';
     _syncIntervalMinutes = config.syncIntervalMinutes;
+    _syncTimeoutSeconds = config.syncTimeoutSeconds;
     _deleteOrphanedFiles = config.deleteOrphanedFiles;
+    _webUiPasswordController =
+        TextEditingController(text: config.webUiPassword);
     _autostartOnBoot = config.autostartOnBoot;
     _keepAliveEnabled = config.keepAliveEnabled;
     _autoUpdateEnabled = config.autoUpdateEnabled;
@@ -214,10 +218,13 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
         )
         .toList(growable: false);
     
-    // Store original values for comparison on save
-    _originalSyncType = _syncType;
-    _originalWebDavSourceConfig = nextcloudConfig;
-    
+    final icloudConfig = ICloudAlbumSourceConfig.fromMap(
+      config.getSourceConfig('icloud_album'),
+    );
+    _icloudAlbumUrlController =
+        TextEditingController(text: icloudConfig.linksText)
+      ..addListener(() => setState(() {}));
+
     // Load saved album selection for device_photos mode
     final devicePhotosConfig = config.getSourceConfig('device_photos');
     _selectedAlbumId = devicePhotosConfig['albumId'] as String?;
@@ -286,6 +293,8 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     _nextcloudUrlController.dispose();
     _webdavUserController.dispose();
     _webdavPasswordController.dispose();
+    _icloudAlbumUrlController.dispose();
+    _webUiPasswordController.dispose();
     super.dispose();
   }
   
@@ -302,19 +311,13 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     
     // Detect if sync configuration changed
     final newNextcloudUrl = _nextcloudUrlController.text.trim();
+    final newICloudAlbumLinks = _icloudAlbumUrlController.text;
+    final newICloudAlbumConfig =
+        ICloudAlbumSourceConfig.fromLinkText(newICloudAlbumLinks);
     final newWebDavSourceConfig = _buildWebDavSourceConfig(
       url: newNextcloudUrl,
     );
-    final nextcloudConfigChanged =
-      !_nextcloudConfigsEqual(newWebDavSourceConfig, _originalWebDavSourceConfig);
-    final syncConfigChanged =
-      _syncType != _originalSyncType ||
-      (_syncType == 'nextcloud_link' && nextcloudConfigChanged);
-    final newSyncSourceConfigured = syncConfigChanged && 
-        _syncType == 'nextcloud_link' && 
-        newNextcloudUrl.isNotEmpty;
-    
-    config.slideDurationSeconds = _slideDurationMinutes * 60;
+    config.slideDurationSeconds = _slideDurationSeconds;
     config.transitionDurationMs = (_transitionDurationSeconds * 1000).round();
     config.blurBorders = _blurBorders;
     // app_folder and local_folder both use empty activeSourceType (no sync)
@@ -328,7 +331,9 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
       config.customPhotoPath = null;
     }
     config.syncIntervalMinutes = _syncIntervalMinutes;
+    config.syncTimeoutSeconds = _syncTimeoutSeconds;
     config.deleteOrphanedFiles = _deleteOrphanedFiles;
+    config.webUiPassword = _webUiPasswordController.text.trim();
     config.autostartOnBoot = _autostartOnBoot;
     config.keepAliveEnabled = _keepAliveEnabled;
     config.autoUpdateEnabled = _autoUpdateEnabled;
@@ -359,28 +364,45 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     
     // Sync autostart setting to SharedPreferences for BootReceiver
     await AutostartService.setEnabled(_autostartOnBoot);
-    
+
     // Sync keep alive setting to SharedPreferences for WakeReceiver
     await KeepAliveService.setEnabled(_keepAliveEnabled);
+
     
     if (_syncType == 'nextcloud_link') {
       config.setSourceConfig('nextcloud_link', newWebDavSourceConfig.toMap());
     }
-    
+    if (_syncType == 'icloud_album') {
+      config.setSourceConfig(
+        'icloud_album',
+        newICloudAlbumConfig.toMap(),
+      );
+    }
+
     await config.save();
-    
-    // If a new sync source was configured, trigger an immediate sync
-    // This runs in the background (fire-and-forget) so the user can continue
-    if (newSyncSourceConfigured) {
+
+    // Trigger a sync whenever a source is configured, not just on first setup.
+    // Covers: URL changes, timeout changes, or simply tapping Save to force a retry.
+    final sourceIsConfigured =
+        (_syncType == 'nextcloud_link' && newNextcloudUrl.isNotEmpty) ||
+        (_syncType == 'icloud_album' &&
+            newICloudAlbumConfig.isValid);
+    if (sourceIsConfigured) {
       final photoService = context.read<PhotoService>();
-      // Don't await - let it run in the background
-      photoService.triggerSync();
+      photoService.triggerSync(); // fire-and-forget
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) async {
+        if (didPop) return;
+        await _saveSettings();
+        if (mounted) Navigator.of(context).pop();
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(AppLocalizations.of(context)!.settings),
         leading: IconButton(
@@ -394,9 +416,33 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
+          // === DEVICE IP / WEB SETTINGS URL ===
+          if (Platform.isAndroid)
+            Builder(builder: (ctx) {
+              final url = ctx.read<WebServerService>().serverUrl;
+              if (url == null) return const SizedBox.shrink();
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Theme.of(ctx).colorScheme.surfaceVariant.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(Icons.wifi, size: 18, color: Theme.of(ctx).colorScheme.primary),
+                      const SizedBox(width: 10),
+                      Text(url, style: TextStyle(fontSize: 13, color: Theme.of(ctx).colorScheme.primary, fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                ),
+              );
+            }),
+
           // === DEVICE ADMIN WARNING ===
           if (Platform.isAndroid && _deviceAdminEnabled) ..._buildDeviceAdminWarning(),
-          
+
           // === SLIDESHOW SETTINGS ===
           _buildSectionHeader(AppLocalizations.of(context)!.sectionSlideshow),
           const SizedBox(height: 8),
@@ -405,13 +451,20 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           _buildSliderSetting(
             icon: Icons.timer,
             title: AppLocalizations.of(context)!.slideDuration,
-            value: _slideDurationMinutes.toDouble(),
-            min: 1,
-            max: 15,
-            divisions: 14,
-            unit: AppLocalizations.of(context)!.unitMinutes,
+            value: _slideDurationSeconds.toDouble(),
+            min: 10,
+            max: 3600,
+            divisions: 359, // 10-second steps
+            unit: '',
+            formatValue: (v) {
+              final s = v.round();
+              if (s < 60) return '${s}s';
+              final m = s ~/ 60;
+              final rem = s % 60;
+              return rem > 0 ? '${m}m ${rem}s' : '${m}m';
+            },
             onChanged: (value) {
-              setState(() => _slideDurationMinutes = value.round());
+              setState(() => _slideDurationSeconds = value.round());
             },
           ),
           
@@ -534,25 +587,59 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           // === SYNC SETTINGS ===
           _buildSectionHeader(AppLocalizations.of(context)!.sectionPhotoSource),
           const SizedBox(height: 8),
-          
+
+          // Web settings server banner
+          Builder(builder: (ctx) {
+            final webServer = ctx.read<WebServerService>();
+            final url = webServer.serverUrl;
+            if (url == null) return const SizedBox.shrink();
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12),
+              child: ListTile(
+                leading: const Icon(Icons.open_in_browser),
+                title: Text(
+                  AppLocalizations.of(ctx)!.webSettingsAddress(url),
+                  style: const TextStyle(fontSize: 13),
+                ),
+                dense: true,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(
+                      color: Theme.of(ctx).colorScheme.outline.withOpacity(0.4)),
+                ),
+              ),
+            );
+          }),
+
           // Sync Type Selection (includes inline folder selector for local_folder)
           _buildSyncTypeSelector(),
-          
+
+          // iCloud URL field (only visible if iCloud selected)
+          if (_syncType == 'icloud_album') ...[
+            const SizedBox(height: 16),
+            _buildICloudAlbumSettings(),
+          ],
+
           // Nextcloud URL (only visible if nextcloud selected)
           if (_syncType == 'nextcloud_link') ...[
             const SizedBox(height: 16),
             _buildNextcloudSettings(),
           ],
-          
-          // Sync options (only visible if sync enabled - i.e. Nextcloud)
-          if (_syncType == 'nextcloud_link') ...[
+
+          // Sync options (iCloud or Nextcloud)
+          if (_syncType == 'icloud_album' || _syncType == 'nextcloud_link') ...[
             const SizedBox(height: 16),
             
             // Sync Interval Slider
             _buildSyncIntervalSlider(),
-            
+
             const SizedBox(height: 8),
-            
+
+            // Sync Timeout Slider
+            _buildSyncTimeoutSlider(),
+
+            const SizedBox(height: 8),
+
             // Delete orphaned files checkbox
                 SwitchListTile(
               title: Text(AppLocalizations.of(context)!.deleteOrphanedFiles),
@@ -599,7 +686,58 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           if (Platform.isAndroid) ...[
             _buildSectionHeader(AppLocalizations.of(context)!.sectionAndroid),
             const SizedBox(height: 8),
-            
+
+            ListTile(
+              leading: const Icon(Icons.wifi),
+              title: const Text('Wi-Fi Settings'),
+              subtitle: const Text('Connect to a network'),
+              trailing: const Icon(Icons.open_in_new, size: 18),
+              onTap: () => NativeScreenControlService.openWifiSettings(),
+            ),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('Android Settings'),
+              subtitle: const Text('Open system settings'),
+              trailing: const Icon(Icons.open_in_new, size: 18),
+              onTap: () => NativeScreenControlService.openAndroidSettings(),
+            ),
+            ListTile(
+              leading: const Icon(Icons.code),
+              title: const Text('Developer Options'),
+              subtitle: const Text('ADB, wireless debugging and more'),
+              trailing: const Icon(Icons.open_in_new, size: 18),
+              onTap: () => NativeScreenControlService.openDeveloperSettings(),
+            ),
+            ListTile(
+              leading: const Icon(Icons.restart_alt),
+              title: const Text('Reboot Device'),
+              subtitle: const Text('Restart the device now'),
+              onTap: () async {
+                final confirmed = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Reboot device?'),
+                    content: const Text('The device will restart immediately.'),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(false),
+                        child: const Text('Cancel'),
+                      ),
+                      TextButton(
+                        onPressed: () => Navigator.of(ctx).pop(true),
+                        child: const Text('Reboot'),
+                      ),
+                    ],
+                  ),
+                );
+                if (confirmed == true) {
+                  await NativeScreenControlService.rebootDevice();
+                }
+              },
+            ),
+
+            const SizedBox(height: 8),
+
             SwitchListTile(
               title: Text(AppLocalizations.of(context)!.startOnBoot),
               subtitle: Text(AppLocalizations.of(context)!.startOnBootSubtitle),
@@ -644,6 +782,28 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             ),
 
             const SizedBox(height: 8),
+
+            // On-device escape hatch: if the web UI password is forgotten, it can
+            // always be cleared here.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              child: TextField(
+                controller: _webUiPasswordController,
+                obscureText: true,
+                decoration: const InputDecoration(
+                  labelText: 'Web UI password',
+                  helperText:
+                      'Protects the web settings page and API. Leave blank to disable. '
+                      'The /metrics endpoint stays open for Prometheus.',
+                  helperMaxLines: 3,
+                  prefixIcon: Icon(Icons.lock_outline),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+
             _buildAutoUpdateSection(),
 
             const SizedBox(height: 24),
@@ -671,9 +831,10 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           ),
         ],
       ),
-    );
+    ),   // end Scaffold (child of PopScope)
+    );   // end PopScope
   }
-  
+
   Widget _buildAutoUpdateSection() {
     final l10n = AppLocalizations.of(context)!;
     final hintColor = Theme.of(context).colorScheme.onSurfaceVariant;
@@ -842,6 +1003,15 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
             _buildLocalFolderSelector(),
         ],
         RadioListTile<String>(
+          title: Text(AppLocalizations.of(context)!.icloudAlbum),
+          subtitle: Text(AppLocalizations.of(context)!.icloudAlbumSubtitle),
+          value: 'icloud_album',
+          groupValue: _syncType,
+          onChanged: (value) {
+            setState(() => _syncType = value!);
+          },
+        ),
+        RadioListTile<String>(
           title: Text(AppLocalizations.of(context)!.nextcloud),
           subtitle: Text(AppLocalizations.of(context)!.nextcloudSubtitle),
           value: 'nextcloud_link',
@@ -851,6 +1021,51 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           },
         ),
       ],
+    );
+  }
+
+  Widget _buildICloudAlbumSettings() {
+    final l10n = AppLocalizations.of(context)!;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.icloudAlbumUrl,
+              style: Theme.of(context).textTheme.labelLarge),
+          const SizedBox(height: 8),
+          TextField(
+            controller: _icloudAlbumUrlController,
+            maxLines: null,
+            decoration: InputDecoration(
+              hintText: l10n.icloudAlbumUrlHint,
+              border: const OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.url,
+          ),
+          const SizedBox(height: 4),
+          Builder(builder: (ctx) {
+            final invalidLinks = ICloudAlbumSourceConfig
+                .fromLinkText(_icloudAlbumUrlController.text)
+                .invalidLinks;
+            if (invalidLinks.isEmpty) return const SizedBox.shrink();
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.icloudAlbumUrlInvalid,
+                    style: TextStyle(
+                        color: Theme.of(ctx).colorScheme.error,
+                        fontSize: 12)),
+                for (final link in invalidLinks)
+                  Text(link,
+                      style: TextStyle(
+                          color: Theme.of(ctx).colorScheme.error,
+                          fontSize: 11)),
+              ],
+            );
+          }),
+        ],
+      ),
     );
   }
   
@@ -1539,34 +1754,6 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     );
   }
 
-  bool _nextcloudConfigsEqual(
-    WebDavSourceConfig left,
-    WebDavSourceConfig right,
-  ) {
-    final leftFolders = left.normalizedSelectedFolders.toList()..sort();
-    final rightFolders = right.normalizedSelectedFolders.toList()..sort();
-
-    if (left.url != right.url ||
-        left.authMode != right.authMode ||
-        left.username != right.username ||
-        left.password != right.password ||
-        left.allowInvalidCertificate != right.allowInvalidCertificate ||
-        left.folderSyncMode != right.folderSyncMode) {
-      return false;
-    }
-
-    if (leftFolders.length != rightFolders.length) {
-      return false;
-    }
-
-    for (var index = 0; index < leftFolders.length; index++) {
-      if (leftFolders[index] != rightFolders[index]) {
-        return false;
-      }
-    }
-
-    return true;
-  }
   
   Widget _buildSyncIntervalSlider() {
     // Values: 0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60
@@ -1605,6 +1792,36 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     );
   }
   
+  Widget _buildSyncTimeoutSlider() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.timer_outlined, size: 20),
+            const SizedBox(width: 12),
+            const Expanded(child: Text('Sync timeout')),
+            Text(
+              '$_syncTimeoutSeconds s',
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+        Slider(
+          value: _syncTimeoutSeconds.toDouble(),
+          min: 15,
+          max: 120,
+          divisions: 7, // 15, 30, 45, 60, 75, 90, 105, 120
+          onChanged: (value) {
+            setState(() => _syncTimeoutSeconds = (value / 15).round() * 15);
+          },
+        ),
+      ],
+    );
+  }
+
   Widget _buildSyncNowButton() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -2319,6 +2536,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           const Spacer(),
           SegmentedButton<String>(
             segments: const [
+              ButtonSegment(value: 'xsmall', label: Text('XS')),
               ButtonSegment(value: 'small', label: Text('S')),
               ButtonSegment(value: 'medium', label: Text('M')),
               ButtonSegment(value: 'large', label: Text('L')),

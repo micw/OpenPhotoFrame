@@ -72,17 +72,19 @@ class PhotoInfoOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Build info lines
+    final dateStr = photo.captureDate != null ? _formatDate(photo.captureDate!) : null;
+    final cityStr = (locationName != null && locationName!.isNotEmpty) ? locationName : null;
+
+    // For bottom positions: city on top, date on bottom (reads naturally upward).
+    // For top positions: date on top, city below.
+    final bool bottomPosition = position == 'bottomRight' || position == 'bottomLeft';
     final List<String> infoLines = [];
-    
-    // Add capture date only if available from EXIF (no fallback to file date)
-    if (photo.captureDate != null) {
-      infoLines.add(_formatDate(photo.captureDate!));
-    }
-    
-    // Add location if available
-    if (locationName != null && locationName!.isNotEmpty) {
-      infoLines.add(locationName!);
+    if (bottomPosition) {
+      if (cityStr != null) infoLines.add(cityStr);
+      if (dateStr != null) infoLines.add(dateStr);
+    } else {
+      if (dateStr != null) infoLines.add(dateStr);
+      if (cityStr != null) infoLines.add(cityStr);
     }
     
     if (infoLines.isEmpty) {
@@ -109,8 +111,10 @@ class PhotoInfoOverlay extends StatelessWidget {
       case 'medium':
         return 39;
       case 'small':
-      default:
         return 30;
+      case 'xsmall':
+      default:
+        return 22;
     }
   }
 
