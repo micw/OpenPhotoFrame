@@ -111,7 +111,7 @@ Tap the center of the screen during slideshow to open settings:
 
 | Setting | Description |
 |---------|-------------|
-| Slide Duration | How long each photo is shown (1-15 min) |
+| Slide Duration | How long each photo is shown (1-900 sec) |
 | Transition Duration | Crossfade animation speed (0.5-5 sec) |
 | Sync Source | None or Nextcloud public share link |
 | Sync Interval | Auto-sync frequency (disabled, or 5-60 min) |
