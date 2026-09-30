@@ -43,7 +43,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     minute: 0,
   );
 
-  late int _slideDurationMinutes;
+  late int _slideDurationSeconds;
   late double _transitionDurationSeconds;
   late bool _blurBorders;
   late String _syncType;
@@ -126,7 +126,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
     SystemChrome.setPreferredOrientations(DeviceOrientation.values);
     
     final config = context.read<ConfigProvider>();
-    _slideDurationMinutes = (config.slideDurationSeconds / 60).round().clamp(1, 15);
+    _slideDurationSeconds = config.slideDurationSeconds.clamp(1, 900);
     _transitionDurationSeconds = (config.transitionDurationMs / 1000.0).clamp(0.5, 5.0);
     _blurBorders = config.blurBorders;
     // Default sync type: app_folder on Android, local_folder on Desktop
@@ -314,7 +314,7 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
         _syncType == 'nextcloud_link' && 
         newNextcloudUrl.isNotEmpty;
     
-    config.slideDurationSeconds = _slideDurationMinutes * 60;
+    config.slideDurationSeconds = _slideDurationSeconds;
     config.transitionDurationMs = (_transitionDurationSeconds * 1000).round();
     config.blurBorders = _blurBorders;
     // app_folder and local_folder both use empty activeSourceType (no sync)
@@ -405,13 +405,13 @@ class _SettingsScreenState extends State<SettingsScreen> with WidgetsBindingObse
           _buildSliderSetting(
             icon: Icons.timer,
             title: AppLocalizations.of(context)!.slideDuration,
-            value: _slideDurationMinutes.toDouble(),
+            value: _slideDurationSeconds.toDouble(),
             min: 1,
-            max: 15,
-            divisions: 14,
-            unit: AppLocalizations.of(context)!.unitMinutes,
+            max: 900,
+            divisions: 899,
+            unit: AppLocalizations.of(context)!.unitSeconds,
             onChanged: (value) {
-              setState(() => _slideDurationMinutes = value.round());
+              setState(() => _slideDurationSeconds = value.round());
             },
           ),
           

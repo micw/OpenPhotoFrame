@@ -93,6 +93,7 @@ void main() {
     final service = createService();
 
     await service.load();
+    service.slideDurationSeconds = 37;
     service.syncIntervalMinutes = 23;
     service.activeSourceType = 'nextcloud_link';
 
@@ -104,6 +105,7 @@ void main() {
     expect(mainConfig, backupConfig);
 
     final decoded = json.decode(mainConfig) as Map<String, dynamic>;
+    expect(decoded['slide_duration_seconds'], 37);
     expect(decoded['sync_interval_minutes'], 23);
     expect(decoded['active_source'], 'nextcloud_link');
   });
